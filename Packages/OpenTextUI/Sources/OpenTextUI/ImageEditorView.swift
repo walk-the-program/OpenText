@@ -21,6 +21,8 @@ public struct ImageEditorActions {
 public struct ImageEditorView: View {
     let actions: ImageEditorActions
     let header: DocumentHeader?
+    let commands: DocumentCommands?
+    @State private var canvasSize: CGSize = .zero
     @State private var image: CGImage
     @State private var original: CGImage
     @State private var zoom: CGFloat = 1                // 1 = fit
@@ -31,7 +33,10 @@ public struct ImageEditorView: View {
     @State private var resizing = false
     @State private var edited = false
 
-    public init(image: NSImage, actions: ImageEditorActions = .init(), header: DocumentHeader? = nil) {
+    /// `commands`: when given, the app menu owns Zoom, Crop, Resize, Rotate and Flip shortcuts (they are dropped here),
+    /// every edit marks `commands` dirty, and `commands.markSaved()` re-disables Save.
+    public init(image: NSImage, actions: ImageEditorActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil) {
+        self.commands = commands
         let cg = ImageOps.cgImage(from: image) ?? NSBitmapImageRep().cgImage ?? Self.blank
         self.actions = actions
         self.header = header
@@ -45,12 +50,29 @@ public struct ImageEditorView: View {
         return ctx.makeImage()!
     }
 
+    private func key(_ s: KeyboardShortcut) -> KeyboardShortcut? { commands == nil ? s : nil }
+
+    private func registerCommands() {
+        commands?.register(kind: .image, handlers: [
+            .zoomIn: { zoom = min(zoom * 1.25, 8) }, .zoomOut: { zoom = max(zoom / 1.25, 0.25) }, .actualSize: { actualSize() },
+            .crop: { toggleCrop() }, .resize: { resizing = true }, .rotate: { apply(ImageOps.rotate90(image)) },
+            .flipHorizontal: { apply(ImageOps.flip(image, horizontal: true)) },
+            .flipVertical: { apply(ImageOps.flip(image, horizontal: false)) },
+        ], onSaved: { edited = false })
+    }
+
+    /// 100% of the image's pixels (1 image pixel = 1 point).
+    private func actualSize() {
+        let fit = min((canvasSize.width - 48) / CGFloat(image.width), (canvasSize.height - 48) / CGFloat(image.height))
+        zoom = fit > 0 ? min(max(1 / fit, 0.05), 8) : 1
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             ToolbarRow(header: header) {
-                ToolButton(title: "Crop", shortcut: .init("k", modifiers: .command), isActive: cropping) { toggleCrop() }
-                ToolButton(title: String(format: "Resize  %d × %d", image.width, image.height), shortcut: .init("r", modifiers: [.option, .command])) { resizing = true }
-                ToolButton(title: "Rotate", shortcut: .init("r", modifiers: .command)) { apply(ImageOps.rotate90(image)) }
+                ToolButton(title: "Crop", shortcut: key(.init("k", modifiers: .command)), isActive: cropping) { toggleCrop() }
+                ToolButton(title: String(format: "Resize  %d × %d", image.width, image.height), shortcut: key(.init("r", modifiers: [.option, .command]))) { resizing = true }
+                ToolButton(title: "Rotate", shortcut: key(.init("r", modifiers: .command))) { apply(ImageOps.rotate90(image)) }
                 flipMenu
                 zoomMenu
                 if cropping { cropButtons }
@@ -64,6 +86,9 @@ public struct ImageEditorView: View {
             StatusBar { Text(verbatim: "\(image.width) × \(image.height) px · \(zoom == 1 ? "Fit" : "\(Int(zoom * 100))% of fit")") }
         }
         .background(Brand.Palette.canvas)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { canvasSize = $0 }
+        .onAppear { registerCommands() }
+        .onDisappear { commands?.unregister() }
         .sheet(isPresented: $resizing) {
             ResizeSheet(width: image.width, height: image.height,
                         onApply: { w, h in resizing = false; apply(ImageOps.resize(image, width: w, height: h)) },
@@ -73,17 +98,18 @@ public struct ImageEditorView: View {
 
     private var flipMenu: some View {
         Menu {
-            Button("Flip Horizontal") { apply(ImageOps.flip(image, horizontal: true)) }.keyboardShortcut("h", modifiers: [.control, .command])
-            Button("Flip Vertical") { apply(ImageOps.flip(image, horizontal: false)) }.keyboardShortcut("v", modifiers: [.control, .command])
+            Button("Flip Horizontal") { apply(ImageOps.flip(image, horizontal: true)) }.optionalShortcut(key(.init("h", modifiers: [.control, .command])))
+            Button("Flip Vertical") { apply(ImageOps.flip(image, horizontal: false)) }.optionalShortcut(key(.init("v", modifiers: [.control, .command])))
         } label: { Text("Flip") }
         .menuStyle(.button).buttonStyle(.toolbarItem).menuIndicator(.hidden).fixedSize()
     }
 
     private var zoomMenu: some View {
         Menu {
-            Button("Zoom In") { zoom = min(zoom * 1.25, 8) }.keyboardShortcut("=", modifiers: .command)
-            Button("Zoom Out") { zoom = max(zoom / 1.25, 0.25) }.keyboardShortcut("-", modifiers: .command)
-            Button("Fit") { zoom = 1 }.keyboardShortcut("0", modifiers: .command)
+            Button("Zoom In") { zoom = min(zoom * 1.25, 8) }.optionalShortcut(key(.init("=", modifiers: .command)))
+            Button("Zoom Out") { zoom = max(zoom / 1.25, 0.25) }.optionalShortcut(key(.init("-", modifiers: .command)))
+            Button("Fit") { zoom = 1 }
+            Button("Actual Size") { actualSize() }.optionalShortcut(key(.init("0", modifiers: .command)))
         } label: { Text("Zoom") }
         .menuStyle(.button).buttonStyle(.toolbarItem).menuIndicator(.hidden).fixedSize()
     }
@@ -171,6 +197,7 @@ public struct ImageEditorView: View {
         image = new
         edited = true
         zoom = 1
+        commands?.markDirty()
         actions.onChange(ImageOps.nsImage(from: new))
     }
 }

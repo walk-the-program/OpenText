@@ -1,6 +1,6 @@
 import Foundation
 
-public enum MarkdownCommand: Sendable { case heading, bold, list, link }
+public enum MarkdownCommand: Sendable { case heading, headingLevel(Int), bold, italic, list, link }
 
 /// A single text replacement, applied by the editor as one undoable edit.
 public struct TextEdit: Equatable, Sendable {
@@ -16,7 +16,9 @@ public enum MarkdownFormatting {
         switch command {
         case .bold: return wrap(ns, sel, marker: "**", placeholder: "bold")
         case .link: return link(ns, sel)
+        case .italic: return wrap(ns, sel, marker: "*", placeholder: "italic")
         case .heading: return heading(ns, sel)
+        case let .headingLevel(level): return heading(ns, sel, level: level)
         case .list: return list(ns, sel)
         }
     }
@@ -45,14 +47,16 @@ public enum MarkdownFormatting {
     }
 
     /// Cycles the heading level of the first selected line: none -> # -> ## -> ### -> none.
-    private static func heading(_ ns: NSString, _ sel: NSRange) -> TextEdit {
+    /// With `level` it sets that level, or removes it when the line already has it.
+    private static func heading(_ ns: NSString, _ sel: NSRange, level: Int? = nil) -> TextEdit {
         let lineRange = ns.lineRange(for: NSRange(location: sel.location, length: 0))
         let hasNewline = lineRange.length > 0 && (ns.substring(with: NSRange(location: lineRange.upperBound - 1, length: 1)) as String).rangeOfCharacter(from: .newlines) != nil
         let contentRange = NSRange(location: lineRange.location, length: lineRange.length - (hasNewline ? 1 : 0))
         let line = ns.substring(with: contentRange)
         let hashes = line.prefix { $0 == "#" }.count
         let rest = line.dropFirst(hashes).drop { $0 == " " }
-        let next = hashes >= 3 ? 0 : hashes + 1
+        let next: Int
+        if let level { let l = min(max(level, 1), 3); next = hashes == l ? 0 : l } else { next = hashes >= 3 ? 0 : hashes + 1 }
         let new = (next == 0 ? "" : String(repeating: "#", count: next) + " ") + rest
         let delta = (new as NSString).length - contentRange.length
         return TextEdit(range: contentRange, replacement: new,

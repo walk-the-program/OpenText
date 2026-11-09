@@ -38,11 +38,15 @@ public struct SetupActions {
 public struct SetupView: View {
     @Binding var state: SetupState
     let actions: SetupActions
+    let shortcutRecorder: AnyView?
     @State private var recording = false
 
-    public init(state: Binding<SetupState>, actions: SetupActions = .init()) {
+    /// `shortcutRecorder`: when given, replaces the built-in single-key recorder (e.g. `AnyView(KeyboardShortcuts.Recorder(...))`).
+    /// The app then owns recording; `actions.onShortcutChanged` is not called by the view.
+    public init(state: Binding<SetupState>, actions: SetupActions = .init(), shortcutRecorder: AnyView? = nil) {
         _state = state
         self.actions = actions
+        self.shortcutRecorder = shortcutRecorder
     }
 
     public var body: some View {
@@ -60,8 +64,12 @@ public struct SetupView: View {
                 }
                 tile(title: "Your new-file shortcut", detail: "Press it anywhere to make a file.", done: nil) {
                     VStack(alignment: .leading, spacing: 8) {
-                        ShortcutField(shortcut: state.shortcut, recording: $recording) { new in
-                            state.shortcut = new; actions.onShortcutChanged(new)
+                        if let shortcutRecorder {
+                            shortcutRecorder
+                        } else {
+                            ShortcutField(shortcut: state.shortcut, recording: $recording) { new in
+                                state.shortcut = new; actions.onShortcutChanged(new)
+                            }
                         }
                         if let warning = state.shortcutWarning {
                             Text(warning).font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.ink)

@@ -23,7 +23,7 @@ public struct DocumentHeader {
     init(title: String, format: String, targets: [String] = [], leadingInset: CGFloat = 0, onSwitchFormat: @escaping (String) -> Void = { _ in })
 }
 
-PDFReaderView(document: PDFDocument, actions: PDFReaderActions = .init(), header: DocumentHeader? = nil)
+PDFReaderView(document: PDFDocument, actions: PDFReaderActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil)
 public struct PDFReaderActions { init(onConvert: () -> Void = {}, loadSignature: () -> Data? = { nil },
                                        saveSignature: (Data) -> Void = { _ in }, onChange: () -> Void = {}) }
 ```
@@ -33,14 +33,14 @@ public struct PDFReaderActions { init(onConvert: () -> Void = {}, loadSignature:
 - Delete key (sidebar focused) removes the current page (never the last one). Thumbnails drag to reorder; dropping .pdf files on the sidebar inserts them (on a thumbnail: after it; on the well: at the end).
 
 ```swift
-ImageEditorView(image: NSImage, actions: ImageEditorActions = .init(), header: DocumentHeader? = nil)
+ImageEditorView(image: NSImage, actions: ImageEditorActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil)
 ImageEditorActions(onSave: (NSImage) -> Void = { _ in }, onConvert: () -> Void = {}, onChange: (NSImage) -> Void = { _ in })
 ```
 Crop (drag rectangle, corners resize, Return applies), Resize sheet (W x H, keep aspect), Rotate 90, Flip menu, Zoom menu. `onSave` hands over the edited image (encode in the original format); Save is enabled once edited.
 
 ```swift
 TextEditorView(text: Binding<String>, isMarkdown: Bool, monospace: Bool = false, isSaved: Bool = true,
-               actions: TextEditorActions = .init(), header: DocumentHeader? = nil)
+               actions: TextEditorActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil)
 TextEditorActions(onConvert: () -> Void = {}, onLock: () -> Void = {}, onToggleMonospace: () -> Void = {})
 ```
 Plain text only (`isRichText = false`). Markdown (`isMarkdown`): syntax characters muted, Heading/Bold/List/Link tools, Edit/Preview segmented, headings scaled. For .txt the tool slot shows "Mono"/"Inter" (calls `onToggleMonospace`; you own the setting and pass `monospace` back). Tool row (not the title/chip) fades ~0.4 s after typing starts and returns on mouse move; instant (no animation) with Reduce Motion. Footer "N words · Saved" (`isSaved == false` shows "Edited").
@@ -54,9 +54,10 @@ Fixed 420 x 260. Return = Create, Esc = onCancel (`onExitCommand`), name field f
 ```swift
 public struct SetupState: Equatable { var defaultAppsDone = false; var finderExtensionOn = false; var shortcut = "ctrl+opt+n"; var shortcutWarning: String? = nil }
 public struct SetupActions { init(onMakeDefault:, onOpenFinderSettings:, onShortcutChanged: (String) -> Void, onDone:) }  // all defaulted
-SetupView(state: Binding<SetupState>, actions: SetupActions = .init())
+SetupView(state: Binding<SetupState>, actions: SetupActions = .init(), shortcutRecorder: AnyView? = nil)
 ```
-Note: `state` is a `Binding` (the shortcut field edits it). Shortcut strings use the settings.json spelling ("ctrl+opt+shift+cmd+<key>").
+`shortcutRecorder`: when non-nil it replaces the built-in single-key recorder (pass `AnyView(KeyboardShortcuts.Recorder(...))`); the app then owns recording and the view never calls `onShortcutChanged`. The shortcut warning still shows under it.
+Note: `state` is a `Binding` (the built-in shortcut field edits it). Shortcut strings use the settings.json spelling ("ctrl+opt+shift+cmd+<key>").
 
 ```swift
 public enum UnlockMethod { case password(String), touchID, recoveryKey(String) }
@@ -66,6 +67,35 @@ RecoveryKeySheet(displayString: String, onDone: () -> Void = {}, onCopy: ((Strin
 SignaturePad(onDone: (Data) -> Void, onCancel: () -> Void)   // transparent PNG
 ```
 `ConvertSheet` and `RecoveryKeySheet` are sized for `.sheet`. `RecoveryKeySheet` copies / opens an NSSavePanel itself unless you pass closures. Locked view: Use Touch ID is the one primary (Unlock becomes primary when `canUseTouchID` is false or the recovery field is shown).
+
+## DocumentCommands (menu hooks and dirty state)
+```swift
+@MainActor @Observable public final class DocumentCommands {
+    public init()
+    public enum Kind { case pdf, image, text }
+    public enum Command: Hashable, Sendable {
+        case find, toggleThumbnails, highlight, sign                 // PDF
+        case zoomIn, zoomOut, actualSize, rotate                     // PDF and image
+        case crop, resize, flipHorizontal, flipVertical              // image
+        case heading(Int /* 1...3 */), bold, italic, list, link, togglePreview, toggleMonospace   // text (monospace: .txt only)
+    }
+    public private(set) var kind: Kind?                              // nil until a view appears
+    public func isAvailable(_ c: Command) -> Bool                    // for .disabled(...)
+    @discardableResult public func perform(_ c: Command) -> Bool     // false = unavailable, nothing happened
+    public private(set) var isDirty: Bool
+    public var onDirtyChange: ((Bool) -> Void)?                      // fires on flips only
+    public func markSaved()                                          // app calls after a successful write
+    // used by the views: register(kind:handlers:onSaved:), unregister(), markDirty()
+}
+extension FocusedValues { public var documentCommands: DocumentCommands? }
+```
+Wiring: one `DocumentCommands` per window, pass `commands:` to the view, publish `.focusedSceneValue(\.documentCommands, commands)` on the window content, and in `.commands { }` read `@FocusedValue(\.documentCommands)`; each menu item calls `commands?.perform(.x)` and uses `.disabled(!(commands?.isAvailable(.x) ?? false))`. Heading ⌘1/⌘2/⌘3 is `.heading(1...3)` (sets that level, or removes it if already set); the toolbar Heading button still cycles levels. Italic wraps in `*`.
+- Views register on appear and unregister on disappear. The text editor drops format commands (heading/bold/italic/list/link) while in Preview.
+- Behaviour: Find opens (never closes) the search bar and focuses it. PDF Actual Size = 100% scale (Fit Width stays in the Zoom menu without a shortcut). Image Actual Size = 1 image pixel per point; Fit has no shortcut. Thumbnails shows/hides the page sidebar.
+- **Shortcut ownership:** when `commands` is non-nil the view drops its own shortcut for the menu-owned commands so nothing double-fires: Find, Zoom In/Out/Actual Size, Rotate (PDF and image), Crop, Resize (was ⌥⌘R, menu uses ⌥⌘I), Flip H/V (the app may give them ⌃⌘H / ⌃⌘V), Heading, Bold, List, Link. Thumbnails has no in-view shortcut. In-view shortcuts that stay even with `commands`: PDF Highlight ⇧⌘H and Sign ⌃⌘S, Edit/Preview ⇧⌘P, Mono ⇧⌘M, Lock ⌥⌘L, Convert ⇧⌘E, Save ⌘S, search next/previous/Done, crop Return/Esc.  Menu items for those would double-fire: ask for a variant before adding any. With `commands == nil` every in-view shortcut is active as before.
+- Italic has no toolbar button (menu only, ⌘I).
+
+Dirty state: with `commands` set, `isDirty` becomes true on any PDF page op / highlight / signature, any image edit (crop, resize, rotate, flip), and any change to the text binding (including programmatic ones). The app calls `commands.markSaved()` after a successful write; this also re-disables the image editor's Save button. `onDirtyChange` fires on each flip (use it to set `NSWindow.isDocumentEdited` or confirm on close). `PDFReaderActions.onChange` and `ImageEditorActions.onChange` still fire as before.
 
 ## Pure logic (public, unit-tested)
 `PDFPageOps` (move, delete, insert, rotate, addHighlight, stampImage, defaultStampBounds, flattenStamps), `ImageOps` (crop, resize, rotate90, flip, aspect helpers, NSImage/CGImage bridges), `CropRect`, `MarkdownSyntaxHighlighter`, `MarkdownFormatting`, `MarkdownPreviewParser`, `WordCounter`.

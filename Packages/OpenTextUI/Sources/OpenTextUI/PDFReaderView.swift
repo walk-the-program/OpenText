@@ -28,8 +28,10 @@ public struct PDFReaderActions {
 public struct PDFReaderView: View {
     let actions: PDFReaderActions
     let header: DocumentHeader?
+    let commands: DocumentCommands?
     @State private var model: PDFReaderModel
     @FocusState private var sidebarFocused: Bool
+    @FocusState private var searchFocused: Bool
     /// Snapshot hook: PDFView draws no page content when it is not in a window, so tests render a still of the page instead.
     private var offscreenStill = false
 
@@ -40,10 +42,27 @@ public struct PDFReaderView: View {
         return c
     }
 
-    public init(document: PDFDocument, actions: PDFReaderActions = .init(), header: DocumentHeader? = nil) {
+    /// `commands`: when given, the app menu owns Find, Zoom, Thumbnails and Rotate shortcuts (they are dropped here),
+    /// every edit marks `commands` dirty, and the view registers its command handlers on it.
+    public init(document: PDFDocument, actions: PDFReaderActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil) {
         self.actions = actions
         self.header = header
-        _model = State(initialValue: PDFReaderModel(document: document))
+        self.commands = commands
+        let m = PDFReaderModel(document: document)
+        m.commands = commands
+        _model = State(initialValue: m)
+    }
+
+    /// In-view shortcut, dropped when the app menu owns it.
+    private func key(_ s: KeyboardShortcut) -> KeyboardShortcut? { commands == nil ? s : nil }
+
+    private func registerCommands() {
+        commands?.register(kind: .pdf, handlers: [
+            .find: { if !model.showsSearch { model.toggleSearch() }; searchFocused = true },
+            .toggleThumbnails: { model.showsSidebar.toggle() },
+            .zoomIn: { model.zoomIn() }, .zoomOut: { model.zoomOut() }, .actualSize: { model.actualSize() },
+            .rotate: { model.rotate(actions) }, .highlight: { model.highlight(actions) }, .sign: { model.sign(actions) },
+        ])
     }
 
     public var body: some View {
@@ -51,8 +70,8 @@ public struct PDFReaderView: View {
             ToolbarRow(header: header) {
                 ToolButton(title: "Highlight", shortcut: .init("h", modifiers: [.command, .shift])) { model.highlight(actions) }
                 ToolButton(title: "Sign", shortcut: .init("s", modifiers: [.control, .command])) { model.sign(actions) }
-                ToolButton(title: "Rotate", shortcut: .init("r", modifiers: .command)) { model.rotate(actions) }
-                ToolButton(title: "Search", shortcut: .init("f", modifiers: .command), isActive: model.showsSearch) { model.toggleSearch() }
+                ToolButton(title: "Rotate", shortcut: key(.init("r", modifiers: .command))) { model.rotate(actions) }
+                ToolButton(title: "Search", shortcut: key(.init("f", modifiers: .command)), isActive: model.showsSearch) { model.toggleSearch() }
                 zoomMenu
             } trailing: {
                 Button("Convert", action: actions.onConvert)
@@ -60,7 +79,7 @@ public struct PDFReaderView: View {
             }
             if model.showsSearch { searchBar }
             HStack(spacing: 0) {
-                sidebar
+                if model.showsSidebar { sidebar }
                 Group {
                     if offscreenStill { PageStill(model: model) } else { PDFCanvas(model: model) }
                 }
@@ -69,6 +88,8 @@ public struct PDFReaderView: View {
             StatusBar { Text(model.statusText) }
         }
         .background(Brand.Palette.canvas)
+        .onAppear { registerCommands() }
+        .onDisappear { commands?.unregister() }
         .sheet(isPresented: $model.showsSignaturePad) {
             SignaturePad(onDone: { png in model.showsSignaturePad = false; actions.saveSignature(png); model.place(png: png, actions) },
                          onCancel: { model.showsSignaturePad = false })
@@ -77,9 +98,10 @@ public struct PDFReaderView: View {
 
     private var zoomMenu: some View {
         Menu {
-            Button("Zoom In") { model.zoomIn() }.keyboardShortcut("=", modifiers: .command)
-            Button("Zoom Out") { model.zoomOut() }.keyboardShortcut("-", modifiers: .command)
-            Button("Fit Width") { model.fit() }.keyboardShortcut("0", modifiers: .command)
+            Button("Zoom In") { model.zoomIn() }.optionalShortcut(key(.init("=", modifiers: .command)))
+            Button("Zoom Out") { model.zoomOut() }.optionalShortcut(key(.init("-", modifiers: .command)))
+            Button("Fit Width") { model.fit() }.optionalShortcut(key(.init("0", modifiers: .command)))
+            Button("Actual Size") { model.actualSize() }
         } label: { Text("Zoom") }
         .menuStyle(.button).buttonStyle(.toolbarItem).menuIndicator(.hidden).fixedSize()
     }
@@ -88,6 +110,7 @@ public struct PDFReaderView: View {
         HStack(spacing: Brand.Spacing.sm) {
             TextField("Find in document", text: $model.query)
                 .brandField().frame(width: 260)
+                .focused($searchFocused)
                 .onSubmit { model.next() }
                 .onChange(of: model.query) { _, _ in model.runSearch() }
             Text(model.searchSummary).font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
@@ -188,6 +211,8 @@ final class PDFReaderModel {
     var currentIndex = 0
     var revision = 0                 // bumps when pages change; thumbnails and counts refresh
     var showsSearch = false
+    var showsSidebar = true
+    @ObservationIgnored var commands: DocumentCommands?
     var showsSignaturePad = false
     var query = ""
     var results: [PDFSelection] = []
@@ -276,6 +301,7 @@ final class PDFReaderModel {
         thumbnails = [:]
         pdfView?.layoutDocumentView()
         pdfView?.setNeedsDisplay(pdfView?.bounds ?? .zero)
+        commands?.markDirty()
         actions.onChange()
     }
 
@@ -306,6 +332,7 @@ final class PDFReaderModel {
     func zoomIn() { pdfView?.zoomIn(nil) }
     func zoomOut() { pdfView?.zoomOut(nil) }
     func fit() { pdfView?.autoScales = true }
+    func actualSize() { pdfView?.autoScales = false; pdfView?.scaleFactor = 1 }
 }
 
 // MARK: - PDFView wrapper

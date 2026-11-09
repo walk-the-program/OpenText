@@ -24,6 +24,7 @@ public struct TextEditorView: View {
     let isSaved: Bool
     let actions: TextEditorActions
     let header: DocumentHeader?
+    let commands: DocumentCommands?
 
     @State private var mode: Mode = .edit
     @State private var toolbarOpacity: Double = 1
@@ -41,7 +42,8 @@ public struct TextEditorView: View {
     static let fadeDelay: Duration = .milliseconds(400)
 
     public init(text: Binding<String>, isMarkdown: Bool, monospace: Bool = false, isSaved: Bool = true,
-                actions: TextEditorActions = .init(), header: DocumentHeader? = nil) {
+                actions: TextEditorActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil) {
+        self.commands = commands
         _text = text
         self.isMarkdown = isMarkdown
         self.monospace = monospace
@@ -50,14 +52,35 @@ public struct TextEditorView: View {
         self.header = header
     }
 
+    /// `commands`: when given, the app menu owns Heading, Bold, Italic, List and Link shortcuts (they are dropped here),
+    /// every change to `text` marks `commands` dirty, and the view registers its command handlers on it.
+    private func key(_ s: KeyboardShortcut) -> KeyboardShortcut? { commands == nil ? s : nil }
+
+    private func registerCommands() {
+        var h: [DocumentCommands.Command: () -> Void] = [:]
+        if isMarkdown {
+            if mode == .edit {
+                for level in 1...3 { h[.heading(level)] = { controller.perform(.headingLevel(level)) } }
+                h[.bold] = { controller.perform(.bold) }
+                h[.italic] = { controller.perform(.italic) }
+                h[.list] = { controller.perform(.list) }
+                h[.link] = { controller.perform(.link) }
+            }
+            h[.togglePreview] = { mode = mode == .edit ? .preview : .edit }
+        } else {
+            h[.toggleMonospace] = { actions.onToggleMonospace() }
+        }
+        commands?.register(kind: .text, handlers: h)
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
             ToolbarRow(header: header, toolsOpacity: toolbarOpacity) {
                 if isMarkdown {
-                    ToolButton(title: "Heading", shortcut: .init("1", modifiers: [.command, .option])) { controller.perform(.heading) }.disabled(mode == .preview)
-                    ToolButton(title: "Bold", shortcut: .init("b", modifiers: .command)) { controller.perform(.bold) }.disabled(mode == .preview)
-                    ToolButton(title: "List", shortcut: .init("l", modifiers: [.command, .shift])) { controller.perform(.list) }.disabled(mode == .preview)
-                    ToolButton(title: "Link", shortcut: .init("k", modifiers: .command)) { controller.perform(.link) }.disabled(mode == .preview)
+                    ToolButton(title: "Heading", shortcut: key(.init("1", modifiers: [.command, .option]))) { controller.perform(.heading) }.disabled(mode == .preview)
+                    ToolButton(title: "Bold", shortcut: key(.init("b", modifiers: .command))) { controller.perform(.bold) }.disabled(mode == .preview)
+                    ToolButton(title: "List", shortcut: key(.init("l", modifiers: [.command, .shift]))) { controller.perform(.list) }.disabled(mode == .preview)
+                    ToolButton(title: "Link", shortcut: key(.init("k", modifiers: .command))) { controller.perform(.link) }.disabled(mode == .preview)
                 } else {
                     ToolButton(title: monospace ? "Inter" : "Mono", shortcut: .init("m", modifiers: [.command, .shift])) { actions.onToggleMonospace() }
                 }
@@ -93,7 +116,10 @@ public struct TextEditorView: View {
             StatusBar(content: { Text("\(WordCounter.label(text)) · \(isSaved ? "Saved" : "Edited")") }, alignment: .trailing)
         }
         .onContinuousHover { phase in if case .active = phase { revealToolbar() } }
-        .onDisappear { fadeTask?.cancel() }
+        .onAppear { registerCommands() }
+        .onChange(of: mode) { _, _ in registerCommands() }
+        .onChange(of: text) { _, _ in commands?.markDirty() }
+        .onDisappear { fadeTask?.cancel(); commands?.unregister() }
     }
 
     private func typed() {

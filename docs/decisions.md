@@ -136,3 +136,10 @@ Newest at the bottom. Never delete an entry; mark it superseded instead.
 - Decision: Headings use Inter SemiBold at its display optical size (Inter_28pt files) with the pack's tight tracking, instead of Inter Tight. Fonts are copied from ~/Library/Fonts into the app bundle (Inter 18pt Regular/Medium/SemiBold for body, Inter 28pt SemiBold/Bold for display).
 - Why: Inter Tight isn't on this Mac and Walker asked for no downloads overnight. The two faces are close at heading sizes.
 - Alternatives considered: Download Inter Tight (blocked by the no-downloads rule); system SF Pro.
+
+## D-020 — Approved downloads: Inter Tight and four Swift libraries (supersedes D-019)
+- Date: 2026-11-08
+- Status: Decided
+- Decision: Walker approved, for a potentially commercial product: Inter Tight font (SIL OFL 1.1, from google/fonts), swift-markdown 0.9.0 (Apache 2.0; swift-cmark BSD-2), swift-argument-parser 1.8.2 (Apache 2.0), MCP Swift SDK 0.12.1 (Apache 2.0, transitioning from MIT; deps swift-nio, async-http-client, swift-log, swift-system Apache 2.0, eventsource MIT), KeyboardShortcuts 1.10.0 (MIT). All source, no prebuilt binaries, no copyleft. Headings return to Inter Tight 600 as in the pack. Any release must ship a third-party notices file with these licenses.
+- Why: Walker: "As long as everything is safe and available for a potentially commercial product, then yes." Libraries replace hand-rolled Markdown parsing, CLI parsing, MCP protocol code and hotkey handling.
+- Alternatives considered: Argon2 via libsodium (skipped: ships a prebuilt binary; PBKDF2 at 600k iterations meets guidance); hand-rolled versions of each library.

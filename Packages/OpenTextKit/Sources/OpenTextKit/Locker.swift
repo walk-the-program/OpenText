@@ -111,11 +111,23 @@ public enum Locker {
 
     public static func lock(_ input: URL, password: String, recoveryPublicKeyBase64: String?, output: URL? = nil, removeOriginal: Bool = false) throws -> URL {
         guard let content = FileManager.default.contents(atPath: input.path) else { throw OpenTextError.unreadable(input) }
+        let dest = Files.unique(output ?? input.appendingPathExtension("otlock"))
+        try lock(data: content, originalName: input.lastPathComponent, password: password, recoveryPublicKeyBase64: recoveryPublicKeyBase64, output: dest)
+        if removeOriginal {
+            try? FileManager.default.trashItem(at: input, resultingItemURL: nil)
+        }
+        return dest
+    }
+
+    /// Encrypts in-memory data to `output` (atomic temp file + replace; overwrites an existing file, so it is the save-back path).
+    /// A fresh file key and salts are generated each call, so `lockID(of:)` changes on every save.
+    @discardableResult
+    public static func lock(data content: Data, originalName: String, password: String, recoveryPublicKeyBase64: String?, output: URL) throws -> URL {
         let fileKey = SymmetricKey(size: .bits256)
         let fileKeyData = fileKey.withUnsafeBytes { Data($0) }
 
         let pwSalt = random(16)
-        guard let pwKek = pbkdf2(password, salt: pwSalt, iterations: iterations) else { throw OpenTextError.writeFailed(input) }
+        guard let pwKek = pbkdf2(password, salt: pwSalt, iterations: iterations) else { throw OpenTextError.writeFailed(output) }
         let pwNonce = AES.GCM.Nonce()
         let pwWrapped = try seal(fileKeyData, key: pwKek, nonce: pwNonce, aad: aadPassword)
         let passwordSlot = PasswordSlot(kdf: "PBKDF2-HMAC-SHA256", iterations: iterations, salt: pwSalt.base64EncodedString(),
@@ -145,16 +157,12 @@ public enum Locker {
         let headerJSON = try enc.encode(header)
         let prefix = magic + Data([1]) + uint32(headerJSON.count) + headerJSON
 
-        let name = Data(input.lastPathComponent.utf8)
+        let name = Data(originalName.utf8)
         let plain = uint32(name.count) + name + content
         let body = try seal(plain, key: fileKey, nonce: payloadNonce, aad: prefix)
 
-        let dest = Files.unique(output ?? input.appendingPathExtension("otlock"))
-        do { try (prefix + body).write(to: dest, options: .atomic) } catch { throw OpenTextError.writeFailed(dest) }
-        if removeOriginal {
-            try? FileManager.default.trashItem(at: input, resultingItemURL: nil)
-        }
-        return dest
+        do { try (prefix + body).write(to: output, options: .atomic) } catch { throw OpenTextError.writeFailed(output) }
+        return output
     }
 
     // MARK: unlock
@@ -227,8 +235,13 @@ public enum Locker {
         return try decryptPayload(p, fileKey: try fileKey(p, password: password))
     }
 
+    public static func decrypt(_ input: URL, recoveryKey: RecoveryKey) throws -> (data: Data, originalName: String) {
+        let p = try parse(input)
+        return try decryptPayload(p, fileKey: try fileKey(p, recovery: recoveryKey))
+    }
+
     /// Stable id for one locked file: SHA-256 (hex) of the password-slot salt in its header.
-    /// Used as the Keychain account for Touch ID. Different per lock operation, unchanged by renaming or moving.
+    /// Used as the Keychain account for Touch ID. Different per lock operation (including every save-back via lock(data:)), unchanged by renaming or moving.
     public static func lockID(of url: URL) throws -> String {
         let p = try parse(url)
         guard let salt = Data(base64Encoded: p.header.password.salt), !salt.isEmpty else { throw OpenTextError.corruptLockedFile }

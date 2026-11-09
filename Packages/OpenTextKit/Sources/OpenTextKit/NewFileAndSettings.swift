@@ -28,6 +28,7 @@ public struct OpenTextSettings: Codable, Sendable {
     public var useTouchID: Bool = true
     public var txtMonospace: Bool = false
     public var lastNewFileFormat: String = "md"
+    public var setupShown: Bool = false
 
     public init() {}
 
@@ -40,6 +41,7 @@ public struct OpenTextSettings: Codable, Sendable {
         useTouchID = try c.decodeIfPresent(Bool.self, forKey: .useTouchID) ?? d.useTouchID
         txtMonospace = try c.decodeIfPresent(Bool.self, forKey: .txtMonospace) ?? d.txtMonospace
         lastNewFileFormat = try c.decodeIfPresent(String.self, forKey: .lastNewFileFormat) ?? d.lastNewFileFormat
+        setupShown = try c.decodeIfPresent(Bool.self, forKey: .setupShown) ?? d.setupShown
     }
 
     /// `$OPENTEXT_SETTINGS_PATH` if set (used by tests), else ~/Library/Application Support/OpenText/settings.json.

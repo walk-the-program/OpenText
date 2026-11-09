@@ -90,3 +90,7 @@ n = uint32_be(plain[0..4]); name = utf8(plain[4 .. 4+n]); original = plain[4+n .
 Not an `OTLK` file: `notLocked`. Bad version, truncated, unparsable header, or failed payload authentication: `corruptLockedFile`. Password slot fails to open: `wrongPassword`. Recovery slot fails to open: `invalidRecoveryKey`; file has no recovery slot: `noRecoveryKeyConfigured`.
 
 Default names: locking `a.txt` writes `a.txt.otlock`; unlocking writes the stored original name next to the locked file. Existing files are never overwritten (`name 2.ext`). The original file name is stored encrypted, and any path components in it are ignored on unlock.
+
+## Saving back (in-memory API)
+
+`Locker.lock(data:originalName:password:recoveryPublicKeyBase64:output:)` produces the same format as file locking (the file-based `lock` calls it). It writes atomically (temp file + replace) and overwrites `output`, so a crash never leaves a half-written `.otlock`. Every call generates a fresh file key and fresh salts, so **`lockID(of:)` changes on every save-back**; the app must re-store the Touch ID Keychain item under the new id (and delete the old one). `Locker.decrypt(_:recoveryKey:)` is the in-memory counterpart of recovery unlock. The on-disk format is unchanged.

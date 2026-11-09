@@ -38,6 +38,51 @@ final class LockerTests: TempTestCase {
         XCTAssertThrowsError(try Locker.lockID(of: src)) { XCTAssertEqual($0 as? OpenTextError, .notLocked) }
     }
 
+    func testDataLockRoundTripEmptyAndNonASCII() throws {
+        let out = file("é ✓.txt.otlock")
+        let r = try Locker.lock(data: Data("héllo ✓".utf8), originalName: "é ✓.txt", password: "pw", recoveryPublicKeyBase64: nil, output: out)
+        XCTAssertEqual(r, out); XCTAssertTrue(Locker.isLocked(out))
+        let d = try Locker.decrypt(out, password: "pw")
+        XCTAssertEqual(d.originalName, "é ✓.txt"); XCTAssertEqual(String(decoding: d.data, as: UTF8.self), "héllo ✓")
+        let e = file("e.otlock")
+        try Locker.lock(data: Data(), originalName: "empty.txt", password: "pw", recoveryPublicKeyBase64: nil, output: e)
+        XCTAssertEqual(try Locker.decrypt(e, password: "pw").data.count, 0)
+        XCTAssertThrowsError(try Locker.decrypt(e, password: "bad")) { XCTAssertEqual($0 as? OpenTextError, .wrongPassword) }
+    }
+
+    func testSaveBackOverwritesAtomicallyAndLockIDChanges() throws {
+        let out = file("doc.txt.otlock")
+        try Locker.lock(data: Data("v1".utf8), originalName: "doc.txt", password: "pw", recoveryPublicKeyBase64: nil, output: out)
+        let id1 = try Locker.lockID(of: out)
+        try Locker.lock(data: Data("v2".utf8), originalName: "doc.txt", password: "pw", recoveryPublicKeyBase64: nil, output: out)
+        XCTAssertEqual(String(decoding: try Locker.decrypt(out, password: "pw").data, as: UTF8.self), "v2")
+        XCTAssertNotEqual(id1, try Locker.lockID(of: out))
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path).filter { $0.contains("otlock") }
+        XCTAssertEqual(names, ["doc.txt.otlock"])
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: dir.path).contains { $0.contains("doc.txt 2") })
+    }
+
+    func testInMemoryRecoveryDecrypt() throws {
+        let (key, pub) = RecoveryKey.generate()
+        let out = file("r.otlock")
+        try Locker.lock(data: Data("rec ✓".utf8), originalName: "r.txt", password: "forgotten", recoveryPublicKeyBase64: pub, output: out)
+        let d = try Locker.decrypt(out, recoveryKey: key)
+        XCTAssertEqual(d.originalName, "r.txt"); XCTAssertEqual(String(decoding: d.data, as: UTF8.self), "rec ✓")
+        XCTAssertThrowsError(try Locker.decrypt(out, recoveryKey: RecoveryKey.generate().key)) { XCTAssertEqual($0 as? OpenTextError, .invalidRecoveryKey) }
+        let noSlot = file("n.otlock")
+        try Locker.lock(data: Data("x".utf8), originalName: "n.txt", password: "p", recoveryPublicKeyBase64: nil, output: noSlot)
+        XCTAssertThrowsError(try Locker.decrypt(noSlot, recoveryKey: key)) { XCTAssertEqual($0 as? OpenTextError, .noRecoveryKeyConfigured) }
+    }
+
+    func testPreviouslyLockedFixtureStillDecrypts() throws {
+        let f = file("old.otlock")
+        try Data(base64Encoded: LegacyFixture.base64)!.write(to: f)
+        let d = try Locker.decrypt(f, password: "legacy-pw")
+        XCTAssertEqual(d.originalName, "legacy ✓.txt"); XCTAssertEqual(String(decoding: d.data, as: UTF8.self), "legacy body")
+        XCTAssertEqual(try Locker.lockID(of: f).count, 64)
+        XCTAssertEqual(try Locker.decrypt(f, recoveryKey: RecoveryKey(displayString: LegacyFixture.recovery)!).originalName, "legacy ✓.txt")
+    }
+
     func testWrongPassword() throws {
         let locked = try Locker.lock(try write("a.txt", "x"), password: "right", recoveryPublicKeyBase64: nil)
         XCTAssertThrowsError(try Locker.unlock(locked, password: "wrong")) { XCTAssertEqual($0 as? OpenTextError, .wrongPassword) }
@@ -132,6 +177,16 @@ final class SettingsAndToolsTests: TempTestCase {
         XCTAssertEqual(OpenTextSettings.load().hotkey, "ctrl+opt+n")
     }
 
+    func testSetupShownAndBackwardCompat() throws {
+        XCTAssertFalse(OpenTextSettings.load().setupShown)
+        try #"{"hotkey":"x","useTouchID":false}"#.write(to: OpenTextSettings.fileURL, atomically: true, encoding: .utf8)
+        var s = OpenTextSettings.load()
+        XCTAssertEqual(s.hotkey, "x"); XCTAssertFalse(s.useTouchID); XCTAssertFalse(s.setupShown)
+        XCTAssertEqual(s.lastNewFileFormat, "md")
+        s.setupShown = true; try s.save()
+        XCTAssertTrue(OpenTextSettings.load().setupShown)
+    }
+
     func testToolsLayer() throws {
         let md = try write("t.md", "# Hi\n")
         let r = try OpenTextTools.call("convert", ["files": [md.path], "to": "html"])
@@ -146,4 +201,9 @@ final class SettingsAndToolsTests: TempTestCase {
         XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": [md.path]]))
         XCTAssertEqual(OpenTextTools.toolDefinitions().compactMap { $0["name"] as? String }, OpenTextTools.toolNames)
     }
+}
+
+enum LegacyFixture {
+    static let base64 = "T1RMSwEAAAImeyJjaXBoZXIiOiJBRVMtMjU2LUdDTSIsInBhc3N3b3JkIjp7Iml0ZXJhdGlvbnMiOjYwMDAwMCwia2RmIjoiUEJLREYyLUhNQUMtU0hBMjU2Iiwibm9uY2UiOiJiR2UzK2QxalBSWWRDTFBBIiwic2FsdCI6ImZXWU5uT2JTZGRNMm9Sa3lwRGNkc3c9PSIsIndyYXBwZWRLZXkiOiJFY1VpR0pUaEZWTWlGQ2puNGpqNUdHV3BkSHRaT1dIV1RoL3ZpREIxcUd4R1BsR2tzenlSNEFKZDl2NGVzSWJBIn0sInBheWxvYWROb25jZSI6ImdrUmpvVzE0L05MZUpQRWIiLCJyZWNvdmVyeSI6eyJlcGhlbWVyYWxQdWJsaWNLZXkiOiJ4dUpiMXFrRmlGaTlyZ1dxanN0NEc4eEc4ekQ1V2NwVnJ3Y0drekpHVjI4PSIsImluZm8iOiJPcGVuVGV4dCByZWNvdmVyeSB2MSIsImtkZiI6IlgyNTUxOS1IS0RGLVNIQTI1NiIsIm5vbmNlIjoiMzZtNkU4Um1UUnY3L2hpRSIsInNhbHQiOiJmamJFUWpKeTIrcFBWZGsrUHM1M3d3PT0iLCJ3cmFwcGVkS2V5IjoiSTdDbXNpRVloN3dGaEtlZVhRVUpUOG1TRkZZM29oRWFmdllEOC9BeExDcmJYMC9MNDZSNVZSZUdnUldEWDNJdiJ9LCJ2ZXJzaW9uIjoxfVWeM9BzLJLnuN816/LAag1M3oSTCBMSkH0ESSq7hkeIZUI0OQPOXY2URl7paw=="
+    static let recovery = "YDXO-DI7R-NQ2L-U6AI-PL54-FH4Y-PFFV-CEJK-QL44-QN5T-ULD4-X6YN-INXQ"
 }

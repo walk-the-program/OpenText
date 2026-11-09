@@ -21,3 +21,7 @@ One section per round. Never delete earlier rounds.
 - What they disliked specifically:
 - Outcome:
 - Next:
+
+
+## Round 2 outcome (2026-11-08)
+Walker: "The toolbar fades, honestly… I quite like that." Locked: B reading window (toolbar + recessed thumbnail sidebar), B quick create (popover from the menu bar item), m3 editor (full toolbar at rest, fades while typing). Tag look/b-quiet-fading-toolbar.

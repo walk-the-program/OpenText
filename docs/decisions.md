@@ -122,3 +122,17 @@ Newest at the bottom. Never delete an entry; mark it superseded instead.
 - Decision: Walker approved the kickoff summary (who, job, price, V1/V2, name, blockers, feel, hard nos, 3 layout directions) in words.
 - Why: "Approved".
 - Alternatives considered: —
+
+## D-018 — Look locked: B reading, fading-toolbar editor, menu-bar quick create (look/b-quiet-fading-toolbar)
+- Date: 2026-11-08
+- Status: Decided
+- Decision: Lock the look as tag look/b-quiet-fading-toolbar. Reading (PDF, images): direction B, native toolbar plus recessed thumbnail sidebar, document filling the window. Text editing: B's toolbar with text tools (Heading, Bold, List, Link, Edit/Preview, Lock, Convert) that fades while typing and returns on mouse movement. Quick create: popover hanging from the menu bar item. Palette, materials and one-primary rule from BUILD-PACK.md. Source: design/brand.json and design/directions/round2/.
+- Why: Walker: "I probably like B the most for reading", quick create "attached to the top… probably B", editor "The toolbar fades, honestly… I quite like that."
+- Alternatives considered: A Tile desk, C Command strip (round 1); editor tools expanding up or out from a corner button (round 2).
+
+## D-019 — Inter's display optical size stands in for Inter Tight
+- Date: 2026-11-08
+- Status: Decided
+- Decision: Headings use Inter SemiBold at its display optical size (Inter_28pt files) with the pack's tight tracking, instead of Inter Tight. Fonts are copied from ~/Library/Fonts into the app bundle (Inter 18pt Regular/Medium/SemiBold for body, Inter 28pt SemiBold/Bold for display).
+- Why: Inter Tight isn't on this Mac and Walker asked for no downloads overnight. The two faces are close at heading sizes.
+- Alternatives considered: Download Inter Tight (blocked by the no-downloads rule); system SF Pro.

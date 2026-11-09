@@ -1,5 +1,14 @@
 # Handoff log
 
+## 2026-11-09 (late night) · Deterministic windows, headless self-test, HTML and rtfd
+
+**Did:**
+- RELY-1 (dc88f5a): launch detection by event order (opens before `applicationDidFinishLaunching` mean "launched with files"), no timers or delays left in window opening; a permanent invisible bridge window holds the only `openWindow`; all external opens go through `AppDelegate.application(_:open:)`. Headless self-test mode (`App/Services/SelfTest.swift`, `scripts/selftest.sh`): windows parked off-screen, never activates, temp settings, no hotkey/recents/token side effects.
+- RICH-2 (5fd584f, 287ff69, 184fbee): .rtfd opens like .rtf; .html renders in a locked-down WKWebView (no JavaScript, block-all content rule list, non-persistent store, no base URL, navigation cancelled except user-clicked http/https/mailto → browser). RICH-3 (9ec3f2d): textutil gets `-noload` for HTML input.
+**Verified:** `scripts/selftest.sh` on the final tree: 10/10 PASS (launch-plain, launch-with-file, warm-open, create-opens incl. after closing every window, reopen, open-rtf, open-html, open-rtfd, first-run-setup, second-run-no-setup); frontmost app unchanged in every run. swift test: OpenTextKit 49, OpenTextUI 54, App/Logic 28. WebKit loopback test: locked view makes 0 connections and runs no script. Installed with `scripts/install.sh`; only `/Applications/OpenText.app` is registered.
+**Decided:** Self-test is the gate for any window/launch change — run `scripts/selftest.sh` before installing (Walker: no "might misbehave" lists).
+**Next:** Walker uses the app; extend `scripts/selftest.sh` with a scenario for any new window flow.
+
 ## 2026-11-09 (night) · Home window, open-after-create, RTF and Office viewing
 
 **Did:** Walker's first-use feedback. Root cause of both bugs: every window opened through SwiftUI's `openWindow` captured from the MenuBarExtra label, which never opens anything (settings showed `setupShown: true` with no setup window; `~/Desktop/stuff.txt` was created but never opened).

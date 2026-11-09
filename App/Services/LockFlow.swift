@@ -80,7 +80,7 @@ enum LockFlow {
         let key = pubKey
         let result: Result<(URL?, Bool), Error> = await Task.detached {
             do { return .success((try Locker.lock(file, password: password, recoveryPublicKeyBase64: key, removeOriginal: true), false)) }
-            catch OpenTextError.originalNotRemoved { return .success((findLockedSibling(of: file), true)) }
+            catch OpenTextError.originalNotRemoved(_, let locked) { return .success((locked, true)) }
             catch { return .failure(error) }
         }.value
         let (locked, stillThere) = try result.get()
@@ -105,14 +105,6 @@ enum LockFlow {
         } catch {
             return "Touch ID couldn't be set up for this file: \(error.localizedDescription)"
         }
-    }
-
-    nonisolated private static func findLockedSibling(of file: URL) -> URL? {
-        let dir = file.deletingLastPathComponent()
-        let items = (try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
-        return items.filter { $0.pathExtension == "otlock" && $0.lastPathComponent.hasPrefix(file.lastPathComponent) }
-            .max { ((try? $0.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast)
-                 < ((try? $1.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast) }
     }
 
     struct Unlocked { var data: Data; var originalName: String; var password: String?; var warning: String? }

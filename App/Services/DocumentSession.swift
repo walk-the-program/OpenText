@@ -64,7 +64,7 @@ final class DocumentSession: ObservableObject {
     var inMemory: Bool { memoryName != nil }
     private var effectiveName: URL { URL(fileURLWithPath: memoryName ?? url.lastPathComponent) }
     var title: String { effectiveName.lastPathComponent }
-    var format: String { FileRouting.canonicalExtension(effectiveName.pathExtension) }
+    var format: String { DocFormat.canonicalExtension(effectiveName.pathExtension) }
     var canSave: Bool {
         switch content { case .text, .pdf, .image: return workLabel == nil; default: return false }
     }
@@ -160,7 +160,6 @@ final class DocumentSession: ObservableObject {
             _ = await self?.save()
         }
     }
-    func pdfChanged() {}
     func imageChanged(_ i: NSImage) { latestImage = i }
 
     private func markSavedNow() {

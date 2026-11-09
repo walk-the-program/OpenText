@@ -45,8 +45,7 @@ struct DocumentWindowView: View {
                     PDFReaderView(document: doc,
                                   actions: PDFReaderActions(onConvert: session.requestConvert,
                                                             loadSignature: SignatureStore.load,
-                                                            saveSignature: SignatureStore.save,
-                                                            onChange: session.pdfChanged),
+                                                            saveSignature: SignatureStore.save),
                                   header: header, commands: session.commands)
                 }
             case .image:

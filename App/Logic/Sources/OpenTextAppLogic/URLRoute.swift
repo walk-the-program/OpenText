@@ -1,4 +1,5 @@
 import Foundation
+import OpenTextKit
 
 /// Actions carried by opentext:// URLs. The sandboxed Finder extension never writes files;
 /// it builds these URLs and the app performs the work.
@@ -14,7 +15,6 @@ public enum RouteError: Error, Equatable {
 
 public enum URLRouter {
     public static let scheme = "opentext"
-    public static let newFormats: Set<String> = ["txt", "md", "csv", "html"]
     public static let convertFormats: Set<String> =
         ["txt", "md", "rtf", "html", "docx", "pdf", "png", "jpg", "heic", "tiff", "gif", "webp"]
 
@@ -27,13 +27,13 @@ public enum URLRouter {
         let action = (url.host ?? "").lowercased()
         switch action {
         case "new":
-            let fmt = FileRouting.canonicalExtension(value("format") ?? "md")
-            guard newFormats.contains(fmt) else { throw RouteError.badFormat(fmt) }
+            let fmt = DocFormat.canonicalExtension(value("format") ?? "md")
+            guard let f = DocFormat(fileExtension: fmt), DocFormat.newFileFormats.contains(f) else { throw RouteError.badFormat(fmt) }
             let dir = try value("dir").map { try path($0) }
             return .new(format: fmt, dir: dir)
         case "convert":
             guard let to = value("to") else { throw RouteError.missingParameter("to") }
-            let fmt = FileRouting.canonicalExtension(to)
+            let fmt = DocFormat.canonicalExtension(to)
             guard convertFormats.contains(fmt) else { throw RouteError.badFormat(fmt) }
             guard let file = value("file") else { throw RouteError.missingParameter("file") }
             return .convert(to: fmt, file: try path(file))

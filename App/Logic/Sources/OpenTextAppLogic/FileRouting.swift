@@ -18,7 +18,7 @@ public enum FileRouting {
     }
 
     /// Opened read-only in the rich text viewer.
-    public static let richTextFormats: Set<DocFormat> = [.rtf, .docx, .doc, .odt, .html]
+    public static let richTextFormats: Set<DocFormat> = [.rtf, .rtfd, .docx, .doc, .odt, .html]
 
     /// Targets offered in the Finder right-click submenu (png/jpg/pdf/md/txt only).
     public static let finderMenuFormats = ["pdf", "md", "txt", "png", "jpg"]

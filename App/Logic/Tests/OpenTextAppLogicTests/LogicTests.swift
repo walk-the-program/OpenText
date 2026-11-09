@@ -75,6 +75,7 @@ import Testing
         #expect(k("a.docx") == .richText)
         #expect(k("a.odt") == .richText)
         #expect(k("a.doc") == .richText)
+        #expect(k("a.RTFD") == .richText)
         #expect(k("a.html") == .richText)
         #expect(k("a.htm") == .richText)
         #expect(k("a.otlock") == .locked)

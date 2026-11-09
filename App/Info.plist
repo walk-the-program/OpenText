@@ -82,6 +82,8 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.rtf</string>
+				<string>com.apple.rtfd</string>
+				<string>com.apple.flat-rtfd</string>
 			</array>
 		</dict>
 		<dict>

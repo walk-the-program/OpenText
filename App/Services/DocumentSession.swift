@@ -23,7 +23,7 @@ struct AnimatedGIFError: LocalizedError {
 /// A document opened from an .otlock lives only in memory; Save re-locks it over the same file.
 @MainActor
 final class DocumentSession: ObservableObject {
-    enum Content: Equatable { case loading, text(markdown: Bool), richText, pdf, pdfPassword, image, locked, failed(String) }
+    enum Content: Equatable { case loading, text(markdown: Bool), richText, html, pdf, pdfPassword, image, locked, failed(String) }
     enum Sheet: Identifiable {
         case convert, lock, relock, recovery(String), result(Notice), pinMismatch(PinMismatch), changedOutside
         var id: String {
@@ -47,8 +47,10 @@ final class DocumentSession: ObservableObject {
     @Published private(set) var isSaved = true
     @Published private(set) var pdf: PDFDocument?
     @Published private(set) var image: NSImage?
-    /// Read-only content of an rtf / docx / doc / odt file (html is shown as source text).
+    /// Read-only content of an rtf / rtfd / docx / doc / odt file.
     @Published private(set) var rich: NSAttributedString?
+    /// Decoded source of an html file, shown rendered (and locked down) by `HTMLView`.
+    @Published private(set) var html: String?
     @Published var lockedMessage: String?
     @Published var sheet: Sheet?
     @Published private(set) var memoryName: String?
@@ -99,6 +101,21 @@ final class DocumentSession: ObservableObject {
     var inMemory: Bool { memoryName != nil }
     private var effectiveName: URL { URL(fileURLWithPath: memoryName ?? url.lastPathComponent) }
     var title: String { effectiveName.lastPathComponent }
+    /// Which viewer the session is showing, as a stable word, for self-tests: loading, text, markdown, richText,
+    /// html, pdf, pdfPassword, image, locked or failed.
+    var contentKindForTesting: String {
+        switch content {
+        case .loading: "loading"
+        case .text(let markdown): markdown ? "markdown" : "text"
+        case .richText: "richText"
+        case .html: "html"
+        case .pdf: "pdf"
+        case .pdfPassword: "pdfPassword"
+        case .image: "image"
+        case .locked: "locked"
+        case .failed: "failed"
+        }
+    }
     var format: String { DocFormat.canonicalExtension(effectiveName.pathExtension) }
     var canSave: Bool {
         switch content { case .text: return workLabel == nil && !isReadOnly; case .pdf, .image: return workLabel == nil; default: return false }
@@ -125,14 +142,14 @@ final class DocumentSession: ObservableObject {
     // MARK: loading
 
     private enum Loaded: @unchecked Sendable {
-        case text(String, TextFormat, readOnly: Bool), pdf(PDFDocument), image(NSImage), rich(NSAttributedString), failed(String)
+        case text(String, TextFormat, readOnly: Bool), pdf(PDFDocument), image(NSImage), rich(NSAttributedString), html(String), failed(String)
     }
 
     /// Reads and decodes the file off the main thread, then shows it.
     func load() {
         autosave?.cancel()
         memoryName = nil; sessionPassword = nil; imageSourceData = nil
-        pdf = nil; image = nil; rich = nil; latestImage = nil; isReadOnly = false
+        pdf = nil; image = nil; rich = nil; html = nil; latestImage = nil; isReadOnly = false
         pdfPassword = nil; pdfPasswordError = nil
         recordedMTime = Self.mtime(url)
         let file = url, kind = FileRouting.kind(for: url)
@@ -160,20 +177,32 @@ final class DocumentSession: ObservableObject {
         case .image:
             return NSImage(contentsOf: file).map(Loaded.image) ?? .failed("This image can't be read.")
         default:
+            if kind == .richText, file.pathExtension.lowercased() == "rtfd" { return readRTFD(file) }
             guard let data = try? Data(contentsOf: file) else { return .failed("This file can't be read.") }
             return parse(data, kind: kind, ext: file.pathExtension)
         }
     }
 
+    /// .rtfd is a package (a directory), or a flat file; read by URL. Off the main thread.
+    nonisolated private static func readRTFD(_ file: URL) -> Loaded {
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: file.path, isDirectory: &isDir)
+        let a: NSAttributedString?
+        if isDir.boolValue {
+            a = try? NSAttributedString(url: file, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil)
+        } else {
+            a = (try? Data(contentsOf: file)).flatMap {
+                try? NSAttributedString(data: $0, options: [.documentType: NSAttributedString.DocumentType.rtfd], documentAttributes: nil)
+            }
+        }
+        return a.map(Loaded.rich) ?? .failed("This document can't be read.")
+    }
+
     /// Word-processor files, decoded off the main thread. HTML is never given to the attributed-string HTML importer
-    /// (it is WebKit-based, main-thread only, and can fetch remote content), so it shows as source text.
+    /// (WebKit-based, main-thread only, can fetch remote content); `HTMLView` renders it in a locked-down web view.
     nonisolated private static func parseRich(_ data: Data, ext: String) -> Loaded {
         guard let f = DocFormat(fileExtension: ext) else { return .failed("This file can't be read.") }
-        if f == .html {
-            guard let (s, _) = TextCoding.decode(data) else { return .failed("This file can't be read.") }
-            return .rich(NSAttributedString(string: s, attributes: [
-                .font: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular), .foregroundColor: NSColor.black]))
-        }
+        if f == .html { return .html(HTMLSafety.decode(data)) }
         let type: NSAttributedString.DocumentType
         switch f {
         case .docx: type = .officeOpenXML
@@ -205,6 +234,7 @@ final class DocumentSession: ObservableObject {
         case .pdf(let d): pdf = d; content = d.isLocked ? .pdfPassword : .pdf
         case .image(let i): image = i; latestImage = i; content = .image
         case .rich(let a): rich = a; content = .richText
+        case .html(let h): html = h; content = .html
         case .text(let s, let f, let readOnly):
             textFormat = f
             isReadOnly = readOnly
@@ -224,7 +254,7 @@ final class DocumentSession: ObservableObject {
         let result = await Task.detached { Self.parse(data, kind: kind, ext: name.pathExtension) }.value
         memoryName = u.originalName
         sessionPassword = u.password
-        pdf = nil; image = nil; rich = nil; latestImage = nil
+        pdf = nil; image = nil; rich = nil; html = nil; latestImage = nil
         imageSourceData = kind == .image ? data : nil
         recordedMTime = Self.mtime(url)
         apply(result, kind: kind)

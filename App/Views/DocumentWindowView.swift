@@ -67,6 +67,12 @@ struct DocumentWindowView: View {
                                  actions: RichTextActions(onConvert: session.requestConvert, onSaveAs: { session.convert(to: $0) }),
                                  header: richHeader)
                 }
+            case .html:
+                if let html = session.html {
+                    HTMLView(html: html,
+                             actions: RichTextActions(onConvert: session.requestConvert, onSaveAs: { session.convert(to: $0) }),
+                             header: richHeader)
+                }
             case .pdfPassword:
                 PDFPasswordView(fileName: session.title, errorMessage: session.pdfPasswordError) { session.unlockPDF(password: $0) }
             case .image:

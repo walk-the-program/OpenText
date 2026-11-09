@@ -86,7 +86,7 @@ targets:
           - CFBundleTypeName: Rich Text
             CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate
-            LSItemContentTypes: [public.rtf]
+            LSItemContentTypes: [public.rtf, com.apple.rtfd, com.apple.flat-rtfd]
           - CFBundleTypeName: Word / Office Document (view)
             CFBundleTypeRole: Viewer
             LSHandlerRank: Alternate

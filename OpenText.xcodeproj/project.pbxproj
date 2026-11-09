@@ -14,6 +14,7 @@
 		3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15719015A5A1FF645C2938B /* AppDelegate.swift */; };
 		3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913786DD947C498DC6D50E52 /* DocumentWindowView.swift */; };
+		4979E9270177E6B88449BAFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87C56FE4E37C37DAB2357F3F /* Assets.xcassets */; };
 		57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */; };
 		6B2D848D7EB93AF330C0FC68 /* OpenTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5230AD37F1820495CB6C632D /* OpenTextKit */; };
 		749AEE684A352318E40980C7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893490A1E849A7087434F93 /* AppModel.swift */; };
@@ -70,6 +71,7 @@
 		694B0C728DC3C5F0B006918B /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		8263EFA2D68536A6C153A1CD /* Logic */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logic; path = App/Logic; sourceTree = SOURCE_ROOT; };
 		8454A5816D4B0E31BE473153 /* OpenText.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenText.entitlements; sourceTree = "<group>"; };
+		87C56FE4E37C37DAB2357F3F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		913786DD947C498DC6D50E52 /* DocumentWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentWindowView.swift; sourceTree = "<group>"; };
 		A15719015A5A1FF645C2938B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCreateHost.swift; sourceTree = "<group>"; };
@@ -160,6 +162,7 @@
 			isa = PBXGroup;
 			children = (
 				A15719015A5A1FF645C2938B /* AppDelegate.swift */,
+				87C56FE4E37C37DAB2357F3F /* Assets.xcassets */,
 				1F02A07C4A27B1776C470A3D /* Info.plist */,
 				8454A5816D4B0E31BE473153 /* OpenText.entitlements */,
 				1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */,
@@ -216,6 +219,7 @@
 			buildConfigurationList = F8BDCAF5BDB1E955D14D0474 /* Build configuration list for PBXNativeTarget "OpenText" */;
 			buildPhases = (
 				40FB7F09A5AE277B58913154 /* Sources */,
+				2D7C60A0F33EC13209A1EB16 /* Resources */,
 				DA8270D728863BF983D48DA4 /* Frameworks */,
 				6B44E228877873F97C0D06C7 /* Embed Foundation Extensions */,
 			);
@@ -281,6 +285,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2D7C60A0F33EC13209A1EB16 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4979E9270177E6B88449BAFF /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		40FB7F09A5AE277B58913154 /* Sources */ = {

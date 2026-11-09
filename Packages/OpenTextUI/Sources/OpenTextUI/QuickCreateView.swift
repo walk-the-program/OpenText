@@ -56,10 +56,10 @@ public struct QuickCreateView: View {
                         let on = state.format == format
                         Button { state.format = format } label: {
                             Text(".\(format)").font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
-                                .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.ink)
+                                .foregroundStyle(on ? Brand.Palette.canvas : Brand.Palette.ink)
                                 .frame(maxWidth: .infinity).frame(height: Brand.Size.control)
                                 .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                                    .fill(on ? Brand.Palette.primary : Brand.Palette.canvas))
+                                    .fill(on ? Brand.Palette.ink : Brand.Palette.canvas))
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("\(format) file").accessibilityAddTraits(on ? .isSelected : [])

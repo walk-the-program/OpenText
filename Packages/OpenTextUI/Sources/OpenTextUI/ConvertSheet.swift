@@ -30,9 +30,9 @@ public struct ConvertSheet: View {
                             Spacer()
                             Text(".\(target)").font(Brand.Fonts.body(12, weight: .medium))
                         }
-                        .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.ink)
+                        .foregroundStyle(on ? Brand.Palette.canvas : Brand.Palette.ink)
                         .padding(.horizontal, 12).frame(height: 32)
-                        .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous).fill(on ? Brand.Palette.primary : .clear))
+                        .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous).fill(on ? Brand.Palette.ink : .clear))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)

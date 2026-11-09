@@ -225,6 +225,8 @@ enum Textutil {
         var args = ["-convert", format, "-output", output.path]
         let ext = input.pathExtension.lowercased()
         if ["txt", "html", "htm"].contains(ext) { args += ["-inputencoding", "UTF-8"] }
+        // Never load subsidiary resources (remote or local images, stylesheets, scripts) named by an HTML input.
+        if ["html", "htm"].contains(ext) { args.append("-noload") }
         if ["txt", "html"].contains(format) { args += ["-encoding", "UTF-8"] }
         args.append(input.path)
         p.arguments = args

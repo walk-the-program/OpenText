@@ -28,25 +28,11 @@ public enum FileRouting {
         }
     }
 
-    /// STAND-IN for ConversionEngine.targets(from:). T3b replaces this with the engine.
-    public static func convertTargets(fromExtension ext: String) -> [String] {
-        switch canonicalExtension(ext) {
-        case "txt": return ["md", "pdf", "rtf", "html"]
-        case "md": return ["txt", "pdf", "html", "docx", "rtf"]
-        case "rtf": return ["txt", "md", "html"]
-        case "html": return ["txt", "md", "rtf"]
-        case "docx", "doc", "odt": return ["txt", "md"]
-        case "pdf": return ["txt", "md", "png"]
-        case "png", "jpg", "heic", "tiff", "gif", "webp":
-            return ["jpg", "png", "pdf"].filter { $0 != canonicalExtension(ext) }
-        default: return []
-        }
-    }
-
     /// Targets offered in the Finder right-click submenu (png/jpg/pdf/md/txt only).
     public static let finderMenuFormats = ["pdf", "md", "txt", "png", "jpg"]
-    public static func finderConvertTargets(fromExtension ext: String) -> [String] {
-        convertTargets(fromExtension: ext).filter { finderMenuFormats.contains($0) }
+    /// Keeps only the formats shown in the Finder submenu, in menu order.
+    public static func finderFilter(_ targets: [String]) -> [String] {
+        finderMenuFormats.filter { targets.contains($0) }
     }
 }
 

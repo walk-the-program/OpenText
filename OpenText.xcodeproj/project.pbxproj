@@ -7,20 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		033A49B48E9C91FC6759565D /* Placeholders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B16D5C05EED2D42DDECA196 /* Placeholders.swift */; };
+		03E1B05627BD1BB1CE7574F8 /* DocumentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168A07F37EB2F8394AB3D418 /* DocumentSession.swift */; };
+		07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682424D182245CB368B99D3F /* Sheets.swift */; };
+		096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3178FDCDE7F6B4F1472D735F /* SetupHost.swift */; };
 		3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15719015A5A1FF645C2938B /* AppDelegate.swift */; };
-		3C1262A8ED3DAE2B7B3FA3E2 /* EngineAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8541FE06EE1C9266934005AE /* EngineAdapter.swift */; };
 		3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913786DD947C498DC6D50E52 /* DocumentWindowView.swift */; };
 		57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */; };
-		723D80FB8BE214C845DC2D81 /* SetupActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A47381999D37F179590179F /* SetupActions.swift */; };
+		6B2D848D7EB93AF330C0FC68 /* OpenTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5230AD37F1820495CB6C632D /* OpenTextKit */; };
 		749AEE684A352318E40980C7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893490A1E849A7087434F93 /* AppModel.swift */; };
 		83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */; };
 		9399E640D29FFC4BE2E7147B /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694B0C728DC3C5F0B006918B /* HotkeyManager.swift */; };
 		B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */; };
 		BCEDB7D4577DA2C7456338F1 /* BiometricKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */; };
 		C432D992C5193E82A8FF60CD /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */; };
+		C914F69FC821CC23881C65AD /* OpenTextDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 3CB6DFEBC541FE0C3CFDC59F /* OpenTextDesign */; };
+		D4A3971E6A782BCFA66D2E61 /* QuickCreateHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */; };
+		E5B45A7BD81EE7A2D0C7B2AB /* OpenTextUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0EA07173BB59751BAD02D68D /* OpenTextUI */; };
 		E7619E29BF09B5C967A2B1CD /* LockFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B2CD95EB9A2CC40DED647 /* LockFlow.swift */; };
+		EA782417DBEAB6BB7D1D1180 /* OpenTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = 762111DB6DF0D60687ED1296 /* OpenTextKit */; };
 		F1A816C25730277617778FE2 /* FinderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F54F23BE186BDF7FF408A9 /* FinderSync.swift */; };
+		FC973CB35D3B5626A1D0EF83 /* OpenTextSetup.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7FD66B420B79137FE17F10 /* OpenTextSetup.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,19 +58,25 @@
 		02F54F23BE186BDF7FF408A9 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
 		100B2CD95EB9A2CC40DED647 /* LockFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockFlow.swift; sourceTree = "<group>"; };
 		1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTextApp.swift; sourceTree = "<group>"; };
+		168A07F37EB2F8394AB3D418 /* DocumentSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentSession.swift; sourceTree = "<group>"; };
 		1F02A07C4A27B1776C470A3D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		2B16D5C05EED2D42DDECA196 /* Placeholders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Placeholders.swift; sourceTree = "<group>"; };
-		4A47381999D37F179590179F /* SetupActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupActions.swift; sourceTree = "<group>"; };
+		3178FDCDE7F6B4F1472D735F /* SetupHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupHost.swift; sourceTree = "<group>"; };
 		57953B9B9E13D439B5175573 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricKeychain.swift; sourceTree = "<group>"; };
+		682424D182245CB368B99D3F /* Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sheets.swift; sourceTree = "<group>"; };
 		694B0C728DC3C5F0B006918B /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		8263EFA2D68536A6C153A1CD /* Logic */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logic; path = App/Logic; sourceTree = SOURCE_ROOT; };
 		8454A5816D4B0E31BE473153 /* OpenText.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenText.entitlements; sourceTree = "<group>"; };
-		8541FE06EE1C9266934005AE /* EngineAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineAdapter.swift; sourceTree = "<group>"; };
+		913786DD947C498DC6D50E52 /* DocumentWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentWindowView.swift; sourceTree = "<group>"; };
 		A15719015A5A1FF645C2938B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCreateHost.swift; sourceTree = "<group>"; };
 		C58611BFE91CAF8BE0BAFA04 /* OpenText.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenText.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C893490A1E849A7087434F93 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		CA7FD66B420B79137FE17F10 /* OpenTextSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTextSetup.swift; sourceTree = "<group>"; };
+		D5E18135E094E644A72D0280 /* OpenTextKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenTextKit; path = Packages/OpenTextKit; sourceTree = SOURCE_ROOT; };
+		D9ACDA714101DF329462E6C3 /* OpenTextDesign */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenTextDesign; path = Packages/OpenTextDesign; sourceTree = SOURCE_ROOT; };
 		F1A7518875CF3DBEA18E37D4 /* FinderExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FinderExtension.entitlements; sourceTree = "<group>"; };
+		F4539C9FBF3D443B3BE58D77 /* OpenTextUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenTextUI; path = Packages/OpenTextUI; sourceTree = SOURCE_ROOT; };
 		FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenTextFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -73,6 +86,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */,
+				6B2D848D7EB93AF330C0FC68 /* OpenTextKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -82,6 +96,9 @@
 			files = (
 				57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */,
 				C432D992C5193E82A8FF60CD /* KeyboardShortcuts in Frameworks */,
+				EA782417DBEAB6BB7D1D1180 /* OpenTextKit in Frameworks */,
+				C914F69FC821CC23881C65AD /* OpenTextDesign in Frameworks */,
+				E5B45A7BD81EE7A2D0C7B2AB /* OpenTextUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,10 +110,10 @@
 			children = (
 				C893490A1E849A7087434F93 /* AppModel.swift */,
 				61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */,
-				8541FE06EE1C9266934005AE /* EngineAdapter.swift */,
+				168A07F37EB2F8394AB3D418 /* DocumentSession.swift */,
 				694B0C728DC3C5F0B006918B /* HotkeyManager.swift */,
 				100B2CD95EB9A2CC40DED647 /* LockFlow.swift */,
-				4A47381999D37F179590179F /* SetupActions.swift */,
+				CA7FD66B420B79137FE17F10 /* OpenTextSetup.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -105,6 +122,9 @@
 			isa = PBXGroup;
 			children = (
 				8263EFA2D68536A6C153A1CD /* Logic */,
+				D9ACDA714101DF329462E6C3 /* OpenTextDesign */,
+				D5E18135E094E644A72D0280 /* OpenTextKit */,
+				F4539C9FBF3D443B3BE58D77 /* OpenTextUI */,
 			);
 			path = Packages;
 			sourceTree = "<group>";
@@ -122,7 +142,10 @@
 		567E2BC3E4384052300A6878 /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				2B16D5C05EED2D42DDECA196 /* Placeholders.swift */,
+				913786DD947C498DC6D50E52 /* DocumentWindowView.swift */,
+				B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */,
+				3178FDCDE7F6B4F1472D735F /* SetupHost.swift */,
+				682424D182245CB368B99D3F /* Sheets.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -176,6 +199,7 @@
 			name = OpenTextFinder;
 			packageProductDependencies = (
 				0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */,
+				5230AD37F1820495CB6C632D /* OpenTextKit */,
 			);
 			productName = OpenTextFinder;
 			productReference = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */;
@@ -198,6 +222,9 @@
 			packageProductDependencies = (
 				4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */,
 				E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */,
+				762111DB6DF0D60687ED1296 /* OpenTextKit */,
+				3CB6DFEBC541FE0C3CFDC59F /* OpenTextDesign */,
+				0EA07173BB59751BAD02D68D /* OpenTextUI */,
 			);
 			productName = OpenText;
 			productReference = C58611BFE91CAF8BE0BAFA04 /* OpenText.app */;
@@ -213,11 +240,11 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					62425081BC7C0B9F39D50612 = {
-						DevelopmentTeam = QGPDXDQ9SW;
+						DevelopmentTeam = 7ZT7J8C9QP;
 						ProvisioningStyle = Automatic;
 					};
 					C17E8B94E5CFFAEAFB3975AB = {
-						DevelopmentTeam = QGPDXDQ9SW;
+						DevelopmentTeam = 7ZT7J8C9QP;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -234,6 +261,9 @@
 			packageReferences = (
 				19127915D489850881D2D737 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 				E461D666C958CEAEB000C9BD /* XCLocalSwiftPackageReference "App/Logic" */,
+				CDF6C22C896B0B62D894DFB1 /* XCLocalSwiftPackageReference "Packages/OpenTextDesign" */,
+				E8C8F8A92C5E4E0DC2B343BC /* XCLocalSwiftPackageReference "Packages/OpenTextKit" */,
+				8EE246479F4C5ACBE555C2DE /* XCLocalSwiftPackageReference "Packages/OpenTextUI" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = BFCB766CBAE6FF17861C240A /* Products */;
@@ -254,12 +284,15 @@
 				3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */,
 				749AEE684A352318E40980C7 /* AppModel.swift in Sources */,
 				BCEDB7D4577DA2C7456338F1 /* BiometricKeychain.swift in Sources */,
-				3C1262A8ED3DAE2B7B3FA3E2 /* EngineAdapter.swift in Sources */,
+				03E1B05627BD1BB1CE7574F8 /* DocumentSession.swift in Sources */,
+				4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */,
 				9399E640D29FFC4BE2E7147B /* HotkeyManager.swift in Sources */,
 				E7619E29BF09B5C967A2B1CD /* LockFlow.swift in Sources */,
 				B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */,
-				033A49B48E9C91FC6759565D /* Placeholders.swift in Sources */,
-				723D80FB8BE214C845DC2D81 /* SetupActions.swift in Sources */,
+				FC973CB35D3B5626A1D0EF83 /* OpenTextSetup.swift in Sources */,
+				D4A3971E6A782BCFA66D2E61 /* QuickCreateHost.swift in Sources */,
+				096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */,
+				07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -319,7 +352,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = QGPDXDQ9SW;
+				DEVELOPMENT_TEAM = 7ZT7J8C9QP;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -462,7 +495,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = QGPDXDQ9SW;
+				DEVELOPMENT_TEAM = 7ZT7J8C9QP;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -518,9 +551,21 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
+		8EE246479F4C5ACBE555C2DE /* XCLocalSwiftPackageReference "Packages/OpenTextUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/OpenTextUI;
+		};
+		CDF6C22C896B0B62D894DFB1 /* XCLocalSwiftPackageReference "Packages/OpenTextDesign" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/OpenTextDesign;
+		};
 		E461D666C958CEAEB000C9BD /* XCLocalSwiftPackageReference "App/Logic" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = App/Logic;
+		};
+		E8C8F8A92C5E4E0DC2B343BC /* XCLocalSwiftPackageReference "Packages/OpenTextKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/OpenTextKit;
 		};
 /* End XCLocalSwiftPackageReference section */
 
@@ -536,13 +581,29 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0EA07173BB59751BAD02D68D /* OpenTextUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextUI;
+		};
 		0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenTextAppLogic;
 		};
+		3CB6DFEBC541FE0C3CFDC59F /* OpenTextDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextDesign;
+		};
 		4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenTextAppLogic;
+		};
+		5230AD37F1820495CB6C632D /* OpenTextKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextKit;
+		};
+		762111DB6DF0D60687ED1296 /* OpenTextKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextKit;
 		};
 		E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */ = {
 			isa = XCSwiftPackageProductDependency;

@@ -1,6 +1,23 @@
 import AppKit
 import SwiftUI
+import OpenTextKit
+import OpenTextUI
 import OpenTextAppLogic
+
+extension OpenTextSettings {
+    func same(as o: OpenTextSettings) -> Bool {
+        defaultFolder == o.defaultFolder && hotkey == o.hotkey && recoveryPublicKey == o.recoveryPublicKey
+            && useTouchID == o.useTouchID && txtMonospace == o.txtMonospace && lastNewFileFormat == o.lastNewFileFormat
+    }
+}
+
+/// A message shown in the small "notice" window (result of a Finder-initiated action, or an error).
+struct Notice: Identifiable {
+    let id = UUID()
+    var title: String
+    var message: String
+    var revealURL: URL?
+}
 
 /// Central app state: settings, hotkey, and routing of files / opentext:// URLs to windows.
 /// Window opening is injected by `RouterBridge` (SwiftUI's openWindow is only available in views).
@@ -8,15 +25,18 @@ import OpenTextAppLogic
 final class AppModel: ObservableObject {
     static let shared = AppModel()
 
-    @Published var settings: StandInSettings = .load()
-    @Published var lastError: String?
+    @Published var settings: OpenTextSettings = .load()
+    @Published var notice: Notice?
     @Published var hotkeyValid = true
+    /// Finder "Lock" lands here; the matching document window shows its lock sheet.
+    @Published var lockRequest: URL?
 
     private var openDocument: ((URL) -> Void)?
     private var openNamed: ((String) -> Void)?
     private var pending: [() -> Void] = []
     private var lastHandled: (url: URL, at: Date)?
     private var started = false
+    private let engine = ConversionEngine()
 
     // MARK: lifecycle
 
@@ -33,6 +53,7 @@ final class AppModel: ObservableObject {
         let flushed = pending
         pending = []
         flushed.forEach { $0() }
+        // First launch only; the window just shows the tiles and never acts by itself.
         if !UserDefaults.standard.bool(forKey: "setupShown") && flushed.isEmpty {
             UserDefaults.standard.set(true, forKey: "setupShown")
             showSetup()
@@ -51,45 +72,67 @@ final class AppModel: ObservableObject {
 
     // MARK: settings
 
-    func update(_ change: (inout StandInSettings) -> Void) {
+    func update(_ change: (inout OpenTextSettings) -> Void) {
         var s = settings
         change(&s)
-        guard s != settings else { return }
+        guard !s.same(as: settings) else { return }
         let hotkeyChanged = s.hotkey != settings.hotkey
         settings = s
-        do { try s.save() } catch { lastError = "Could not save settings: \(error.localizedDescription)" }
+        do { try s.save() } catch { notice = Notice(title: "Settings not saved", message: error.localizedDescription) }
         if hotkeyChanged { hotkeyValid = HotkeyManager.shared.apply(s.hotkey) }
     }
 
-    /// Called by the shortcut recorder after the user picks a new shortcut: mirror into settings.json.
-    func shortcutRecorded() {
-        guard let str = HotkeyManager.shared.currentString else { return }
-        hotkeyValid = true
-        if str != settings.hotkey { update { $0.hotkey = str } }
+    private func reloadSettingsFromDisk() {
+        let s = OpenTextSettings.load()
+        guard !s.same(as: settings) else { return }
+        settings = s
+        syncHotkeyFromFile()
     }
 
     /// File wins when it differs from what KeyboardShortcuts stored (hand/AI edits).
     private func syncHotkeyFromFile() {
         if settings.hotkey != HotkeyManager.shared.currentString {
             hotkeyValid = HotkeyManager.shared.apply(settings.hotkey)
+        } else {
+            hotkeyValid = true
         }
-    }
-
-    private func reloadSettingsFromDisk() {
-        let s = StandInSettings.load()
-        guard s != settings else { return }
-        settings = s
-        syncHotkeyFromFile()
     }
 
     // MARK: windows
 
     func showQuickCreate() { whenReady { [self] in NSApp.activate(); openNamed?("quick-create") } }
     func showSetup() { whenReady { [self] in NSApp.activate(); openNamed?("setup") } }
+    func showNotice(_ n: Notice) { notice = n; whenReady { [self] in NSApp.activate(); openNamed?("notice") } }
 
     func openFile(_ url: URL) {
         guard FileRouting.kind(for: url) != .unsupported else { NSSound.beep(); return }
         whenReady { [self] in NSApp.activate(); openDocument?(url) }
+    }
+
+    func openPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panel.begin { [weak self] r in
+            guard r == .OK else { return }
+            Task { @MainActor in panel.urls.forEach { self?.openFile($0) } }
+        }
+    }
+
+    /// Folder-only picker, shown only when the user clicks Change.
+    func chooseFolder(startingAt path: String, completion: @escaping (String) -> Void) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
+        panel.prompt = "Choose"
+        panel.begin { r in
+            guard r == .OK, let url = panel.url else { return }
+            Task { @MainActor in completion(url.path) }
+        }
     }
 
     // MARK: URL / file entry point
@@ -101,29 +144,39 @@ final class AppModel: ObservableObject {
         if url.isFileURL { openFile(url); return }
         do {
             switch try URLRouter.parse(url) {
-            case .new(let format, let dir): createNew(format: format, in: dir)
-            case .convert(let to, let file): convert(file, to: to)
-            case .lock(let file): openFile(file); requestLock(file)
+            case .new(let format, let dir): createNew(format: format, name: "Untitled", in: dir)
+            case .convert(let to, let file): convertInBackground(file, to: to)
+            case .lock(let file): openFile(file); lockRequest = file
             }
         } catch {
-            lastError = "Ignored \(url.absoluteString): \(error)"
+            showNotice(Notice(title: "Link ignored", message: "\(url.absoluteString)\n\(error)"))
         }
     }
 
-    func createNew(format: String, in dir: URL? = nil) {
+    /// One code path for quick create, the hotkey window and Finder `new`.
+    func createNew(format: String, name: String, in dir: URL? = nil) {
+        guard let fmt = DocFormat(name: format) else { return }
         do {
-            let url = try EngineAdapter.newFile(format: format, in: dir ?? settings.defaultFolderURL)
+            let url = try NewFile.create(fmt, name: name, in: dir ?? settings.defaultFolderURL)
             update { $0.lastNewFileFormat = format }
             openFile(url)
-        } catch { lastError = "Could not create the file: \(error.localizedDescription)" }
+        } catch {
+            showNotice(Notice(title: "Could not create the file", message: error.localizedDescription))
+        }
     }
 
-    func convert(_ file: URL, to format: String) {
-        do { _ = try EngineAdapter.convert(file, to: format) }
-        catch { lastError = error.localizedDescription }
+    /// Converts next to the original and reports in the notice window (no auto-open).
+    func convertInBackground(_ file: URL, to format: String) {
+        guard let fmt = DocFormat(name: format) else { return }
+        let engine = self.engine
+        Task {
+            do {
+                let out = try await Task.detached { try engine.convert(file, to: fmt) }.value
+                let names = out.map(\.lastPathComponent).joined(separator: "\n")
+                showNotice(Notice(title: "Converted", message: names, revealURL: out.first))
+            } catch {
+                showNotice(Notice(title: "Could not convert \(file.lastPathComponent)", message: error.localizedDescription))
+            }
+        }
     }
-
-    /// Finder "Lock" lands here; the document window shows the lock sheet for this URL.
-    @Published var lockRequest: URL?
-    func requestLock(_ file: URL) { lockRequest = file }
 }

@@ -3,7 +3,7 @@ import UniformTypeIdentifiers
 import FinderSync
 
 /// Setup actions. Each runs only from a button press in the setup window, never at launch.
-enum SetupActions {
+enum OpenTextSetup {
     /// The four user-facing types (images, PDF, .txt, .md) expanded to concrete UTTypes.
     static var defaultTypes: [UTType] {
         var t: [UTType] = [.png, .jpeg, .heic, .tiff, .gif, .pdf, .plainText]
@@ -25,6 +25,8 @@ enum SetupActions {
     static func isDefault(for type: UTType) -> Bool {
         NSWorkspace.shared.urlForApplication(toOpen: type)?.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL
     }
+
+    static var allDefaults: Bool { defaultTypes.allSatisfy(isDefault) }
 
     static func openExtensionSettings() {
         for s in ["x-apple.systempreferences:com.apple.ExtensionsPreferences",

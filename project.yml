@@ -5,7 +5,7 @@ options:
     macOS: "26.0"
 settings:
   base:
-    DEVELOPMENT_TEAM: QGPDXDQ9SW
+    DEVELOPMENT_TEAM: 7ZT7J8C9QP
     CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "26.0"
@@ -17,14 +17,12 @@ packages:
   KeyboardShortcuts:
     url: https://github.com/sindresorhus/KeyboardShortcuts
     from: 1.10.0
-  # TODO(T3b): enable once the packages exist and `swift build` passes for each, then add the
-  # matching `- package: ...` lines to the OpenText target dependencies below.
-  # OpenTextKit:
-  #   path: Packages/OpenTextKit
-  # OpenTextDesign:
-  #   path: Packages/OpenTextDesign
-  # OpenTextUI:
-  #   path: Packages/OpenTextUI
+  OpenTextKit:
+    path: Packages/OpenTextKit
+  OpenTextDesign:
+    path: Packages/OpenTextDesign
+  OpenTextUI:
+    path: Packages/OpenTextUI
 targets:
   OpenText:
     type: application
@@ -35,9 +33,12 @@ targets:
     dependencies:
       - package: OpenTextAppLogic
       - package: KeyboardShortcuts
+      - package: OpenTextKit
+        product: OpenTextKit
+      - package: OpenTextDesign
+      - package: OpenTextUI
       - target: OpenTextFinder
         embed: true
-      # TODO(T3b): - package: OpenTextKit / OpenTextDesign / OpenTextUI
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.walkertracy.opentext
@@ -105,6 +106,8 @@ targets:
     sources: [FinderExtension]
     dependencies:
       - package: OpenTextAppLogic
+      - package: OpenTextKit
+        product: OpenTextKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.walkertracy.opentext.finder

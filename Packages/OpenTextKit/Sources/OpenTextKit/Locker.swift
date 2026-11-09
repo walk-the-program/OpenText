@@ -227,6 +227,14 @@ public enum Locker {
         return try decryptPayload(p, fileKey: try fileKey(p, password: password))
     }
 
+    /// Stable id for one locked file: SHA-256 (hex) of the password-slot salt in its header.
+    /// Used as the Keychain account for Touch ID. Different per lock operation, unchanged by renaming or moving.
+    public static func lockID(of url: URL) throws -> String {
+        let p = try parse(url)
+        guard let salt = Data(base64Encoded: p.header.password.salt), !salt.isEmpty else { throw OpenTextError.corruptLockedFile }
+        return SHA256.hash(data: salt).map { String(format: "%02x", $0) }.joined()
+    }
+
     public static func isLocked(_ url: URL) -> Bool {
         guard let h = try? FileHandle(forReadingFrom: url) else { return false }
         defer { try? h.close() }

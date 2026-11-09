@@ -1,6 +1,7 @@
 import Cocoa
 import FinderSync
 import OpenTextAppLogic
+import OpenTextKit
 
 /// Sandboxed: never writes files. Every action opens an opentext:// URL and the app does the work.
 final class FinderSync: FIFinderSync {
@@ -19,7 +20,8 @@ final class FinderSync: FIFinderSync {
         case .contextualMenuForItems:
             let urls = FIFinderSyncController.default().selectedItemURLs() ?? []
             guard let first = urls.first else { return nil }
-            let targets = FileRouting.finderConvertTargets(fromExtension: first.pathExtension)
+            let engine = ConversionEngine()
+            let targets = DocFormat(url: first).map { FileRouting.finderFilter(engine.targets(from: $0).map(\.fileExtension)) } ?? []
             if !targets.isEmpty {
                 let convert = NSMenuItem(title: "Convert to", action: nil, keyEquivalent: "")
                 let sub = NSMenu(title: "Convert to")

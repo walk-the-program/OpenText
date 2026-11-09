@@ -75,10 +75,9 @@ import Testing
         #expect(k("a.zip") == .unsupported)
         #expect(k("noext") == .unsupported)
     }
-    @Test func finderTargets() {
-        #expect(FileRouting.finderConvertTargets(fromExtension: "png") == ["jpg", "pdf"])
-        #expect(FileRouting.finderConvertTargets(fromExtension: "md") == ["txt", "pdf"])
-        #expect(FileRouting.finderConvertTargets(fromExtension: "zip").isEmpty)
+    @Test func finderFilter() {
+        #expect(FileRouting.finderFilter(["jpg", "tiff", "pdf", "png"]) == ["pdf", "png", "jpg"])
+        #expect(FileRouting.finderFilter(["docx"]).isEmpty)
     }
     @Test func passwordRules() {
         #expect(PasswordRules.validate(password: "short", confirm: "short") == .tooShort)

@@ -25,6 +25,19 @@ final class LockerTests: TempTestCase {
         XCTAssertEqual(try Locker.decrypt(try Locker.lock(empty, password: "p", recoveryPublicKeyBase64: nil), password: "p").data.count, 0)
     }
 
+    func testLockID() throws {
+        let src = try write("id.txt", "x")
+        let a = try Locker.lock(src, password: "p", recoveryPublicKeyBase64: nil)
+        let b = try Locker.lock(src, password: "p", recoveryPublicKeyBase64: nil)
+        let idA = try Locker.lockID(of: a)
+        XCTAssertEqual(idA.count, 64)
+        XCTAssertEqual(idA, try Locker.lockID(of: a))
+        XCTAssertNotEqual(idA, try Locker.lockID(of: b))
+        let moved = file("moved.otlock"); try FileManager.default.moveItem(at: a, to: moved)
+        XCTAssertEqual(idA, try Locker.lockID(of: moved))
+        XCTAssertThrowsError(try Locker.lockID(of: src)) { XCTAssertEqual($0 as? OpenTextError, .notLocked) }
+    }
+
     func testWrongPassword() throws {
         let locked = try Locker.lock(try write("a.txt", "x"), password: "right", recoveryPublicKeyBase64: nil)
         XCTAssertThrowsError(try Locker.unlock(locked, password: "wrong")) { XCTAssertEqual($0 as? OpenTextError, .wrongPassword) }

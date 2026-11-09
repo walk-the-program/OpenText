@@ -50,4 +50,6 @@ App group + keychain-access-groups are restricted entitlements and need a provis
 ```bash
 xcodebuild -project OpenText.xcodeproj -scheme OpenText -configuration Release -destination 'platform=macOS' DEVELOPMENT_TEAM=7ZT7J8C9QP -allowProvisioningUpdates -allowProvisioningDeviceRegistration build
 ```
-The first signed build registered this Mac in the developer account and created the Mac development profiles for the app group and Keychain group. A verified Release copy is kept at `build/OpenText.app` (git-ignored).
+The first signed build registered this Mac in the developer account and created the Mac development profiles for the app group and Keychain group. Install with `scripts/install.sh`: it builds a signed Release in a throwaway DerivedData folder, deletes it afterwards, unregisters every other copy and installs the only one at `/Applications/OpenText.app`. Don't leave extra built copies around (DerivedData, `build/`): Spotlight and Open With list each one as another "OpenText".
+
+App icon: `App/AppIcon.icon` (Icon Composer format, built from the source SVGs in ~/Desktop/Projects/Nominal Studios/Brand Assets/OpenText icon/ with the background rect removed; light and dark fills and marks). macOS 26 renders the old `AppIcon.appiconset` (a pre-drawn tile) as a grey, fold-less legacy icon at 128–256px, so the `.icon` file is the one the build uses; the appiconset stays only as the fallback.

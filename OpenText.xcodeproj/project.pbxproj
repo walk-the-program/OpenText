@@ -11,6 +11,7 @@
 		03E1B05627BD1BB1CE7574F8 /* DocumentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168A07F37EB2F8394AB3D418 /* DocumentSession.swift */; };
 		07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682424D182245CB368B99D3F /* Sheets.swift */; };
 		096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3178FDCDE7F6B4F1472D735F /* SetupHost.swift */; };
+		135C1323E283BC9DDF10753D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */; };
 		3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15719015A5A1FF645C2938B /* AppDelegate.swift */; };
 		3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913786DD947C498DC6D50E52 /* DocumentWindowView.swift */; };
@@ -73,6 +74,7 @@
 		8263EFA2D68536A6C153A1CD /* Logic */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logic; path = App/Logic; sourceTree = SOURCE_ROOT; };
 		8454A5816D4B0E31BE473153 /* OpenText.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenText.entitlements; sourceTree = "<group>"; };
 		87C56FE4E37C37DAB2357F3F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		913786DD947C498DC6D50E52 /* DocumentWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentWindowView.swift; sourceTree = "<group>"; };
 		A15719015A5A1FF645C2938B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCreateHost.swift; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 			isa = PBXGroup;
 			children = (
 				A15719015A5A1FF645C2938B /* AppDelegate.swift */,
+				87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */,
 				87C56FE4E37C37DAB2357F3F /* Assets.xcassets */,
 				1F02A07C4A27B1776C470A3D /* Info.plist */,
 				8454A5816D4B0E31BE473153 /* OpenText.entitlements */,
@@ -294,6 +297,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				135C1323E283BC9DDF10753D /* AppIcon.icon in Resources */,
 				4979E9270177E6B88449BAFF /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

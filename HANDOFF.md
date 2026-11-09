@@ -1,5 +1,12 @@
 # Handoff log
 
+## 2026-11-09 (evening) · App icon fixed, one installed copy
+
+**Did:** Found why the icon looked wrong: macOS 26 drew the pre-drawn `AppIcon.appiconset` tile as a grey legacy icon with no citron fold at 128–256px (Spotlight, Finder). Added `App/AppIcon.icon` (Icon Composer format, vector mark from Walker's source SVGs, light and dark backgrounds, no glass translucency) and regenerated the project. Deleted all built copies (`build/OpenText.app`, both DerivedData builds, 11 stale scratch registrations) and added `scripts/install.sh`, which builds once and installs the only copy at `/Applications/OpenText.app`.
+**Verified:** The system-rendered icon (`NSWorkspace.icon(forFile:)`) of `/Applications/OpenText.app` shows the citron fold and clean edges from 64px up; at 16–32px the fold is a few pixels. LaunchServices and Spotlight list exactly one OpenText. `codesign --verify --deep --strict` passes. App not launched.
+**Decided:** The single install lives in /Applications (normal place for a default opener and the Finder extension); `build/` is no longer used.
+**Next:** Walker opens /Applications/OpenText.app for the first real run. Spotlight may need a minute to drop the old entries.
+
 ## 2026-11-09 (later) · Icon mark as the in-app logo
 
 **Did:** Walker's final icon mark is now drawn in code (`Packages/OpenTextDesign/Sources/OpenTextDesign/BrandMark.swift`, one geometry for the colour view and the monochrome template) and used in the setup window, the menu bar extra (template, replaces `doc.text`), the Finder extension's menu items (template; the extension now links OpenTextDesign) and the "couldn't open" empty state. The About panel already uses AppIcon (`ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon`). Decision D-021; `identity.mark-fold` #e2e58a added to `design/brand.json` as logo-only.

@@ -52,3 +52,12 @@ import Testing
         }
     }
 }
+
+@Suite struct BrandMarkTests {
+    @Test func templateImageIsTemplateWithGlyphAspect() {
+        let image = BrandMark.templateImage(pointSize: 16)
+        #expect(image.isTemplate)
+        #expect(image.size.height == 16)
+        #expect(abs(image.size.width - 16 * 510.56 / 690.56) < 0.01)
+    }
+}

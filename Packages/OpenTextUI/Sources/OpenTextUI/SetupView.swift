@@ -51,9 +51,12 @@ public struct SetupView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.xl) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Set up OpenText").brandHeading(26)
-                Text("Three quick things. You can change them later.").brandBody().foregroundStyle(Brand.Palette.muted)
+            HStack(alignment: .center, spacing: Brand.Spacing.md) {
+                BrandMark(size: 40)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Set up OpenText").brandHeading(26)
+                    Text("Three quick things. You can change them later.").brandBody().foregroundStyle(Brand.Palette.muted)
+                }
             }
             HStack(alignment: .top, spacing: Brand.Spacing.lg) {
                 tile(title: "Make OpenText your default", detail: "Opens images, PDF, .txt and .md. macOS asks you to confirm each type.", done: state.defaultAppsDone) {

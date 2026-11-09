@@ -189,6 +189,18 @@ enum Fixture {
         }
     }
 
+    @Test func brandMark() {
+        for dark in [false, true] {
+            let rep = Snap.render(BrandMark(size: 128), name: "brand-mark", dark: dark, size: CGSize(width: 320, height: 240), center: true)
+            #expect(Snap.inkFraction(rep) > 0.02)
+            let t = BrandMark.templateImage(pointSize: 16), big = BrandMark.templateImage(pointSize: 64)
+            Snap.render(HStack(spacing: 40) {
+                Image(nsImage: t).foregroundStyle(Brand.Palette.ink)
+                Image(nsImage: big).foregroundStyle(Brand.Palette.ink)
+            }, name: "brand-mark-template", dark: dark, size: CGSize(width: 240, height: 120), center: true)
+        }
+    }
+
     @Test func popoversAndSheets() {
         for dark in [false, true] {
             var qc = QuickCreateState()

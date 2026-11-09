@@ -33,7 +33,7 @@ struct OpenTextApp: App {
             QuickCreateHost(isPopover: true).environmentObject(model)
         } label: {
             // The label is alive from launch, so it hosts the bridge that supplies openWindow.
-            Image(systemName: "doc.text").modifier(RouterBridge())
+            Image(nsImage: BrandMark.templateImage(pointSize: 16)).modifier(RouterBridge())
         }
         .menuBarExtraStyle(.window)
 

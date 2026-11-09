@@ -33,6 +33,12 @@ public enum Brand {
         public static let glow = NSColor.brand(light: "#fafbfb", dark: "#f5f7f9", lightAlpha: 0.95, darkAlpha: 0.07)
     }
 
+    /// Logo-only colour. The citron fold is the same in light and dark and is never a UI fill.
+    public enum Mark {
+        public static let foldNS = NSColor(brandHex: "#e2e58a")
+        public static let fold = Color(nsColor: foldNS)
+    }
+
     public enum Palette {
         public static let canvas = Color(nsColor: NSPalette.canvas)
         public static let surface = Color(nsColor: NSPalette.surface)

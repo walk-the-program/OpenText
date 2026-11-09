@@ -38,7 +38,12 @@ struct DocumentWindowView: View {
             case .loading:
                 Color.clear
             case .failed(let message):
-                Text(message).brandBody().foregroundStyle(Brand.Palette.muted)
+                VStack(spacing: 16) {
+                    BrandMark(size: 56)
+                    Text(message).brandBody().foregroundStyle(Brand.Palette.muted)
+                        .multilineTextAlignment(.center).frame(maxWidth: 360)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .locked:
                 LockedFileView(fileName: session.title, canUseTouchID: model.settings.useTouchID && BiometricKeychain.isAvailable,
                                errorMessage: session.lockedMessage) { session.unlock($0, model: model) }

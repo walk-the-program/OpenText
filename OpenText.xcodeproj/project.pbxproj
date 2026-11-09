@@ -16,6 +16,7 @@
 		4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913786DD947C498DC6D50E52 /* DocumentWindowView.swift */; };
 		4979E9270177E6B88449BAFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87C56FE4E37C37DAB2357F3F /* Assets.xcassets */; };
 		57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */; };
+		5904E577106D2C926180BC3F /* OpenTextDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 72848C069E46A3614FAA26C0 /* OpenTextDesign */; };
 		6B2D848D7EB93AF330C0FC68 /* OpenTextKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5230AD37F1820495CB6C632D /* OpenTextKit */; };
 		749AEE684A352318E40980C7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893490A1E849A7087434F93 /* AppModel.swift */; };
 		83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */; };
@@ -93,6 +94,7 @@
 			files = (
 				83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */,
 				6B2D848D7EB93AF330C0FC68 /* OpenTextKit in Frameworks */,
+				5904E577106D2C926180BC3F /* OpenTextDesign in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -209,6 +211,7 @@
 			packageProductDependencies = (
 				0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */,
 				5230AD37F1820495CB6C632D /* OpenTextKit */,
+				72848C069E46A3614FAA26C0 /* OpenTextDesign */,
 			);
 			productName = OpenTextFinder;
 			productReference = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */;
@@ -623,6 +626,10 @@
 		5230AD37F1820495CB6C632D /* OpenTextKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = OpenTextKit;
+		};
+		72848C069E46A3614FAA26C0 /* OpenTextDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextDesign;
 		};
 		762111DB6DF0D60687ED1296 /* OpenTextKit */ = {
 			isa = XCSwiftPackageProductDependency;

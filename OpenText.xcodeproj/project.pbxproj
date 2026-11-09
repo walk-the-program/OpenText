@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		02929DD07F13B1B87BDECD01 /* PDFPasswordView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3CE6078D3BF6594734C3023 /* PDFPasswordView.swift */; };
 		03E1B05627BD1BB1CE7574F8 /* DocumentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168A07F37EB2F8394AB3D418 /* DocumentSession.swift */; };
 		07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682424D182245CB368B99D3F /* Sheets.swift */; };
 		096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3178FDCDE7F6B4F1472D735F /* SetupHost.swift */; };
@@ -75,6 +76,7 @@
 		C58611BFE91CAF8BE0BAFA04 /* OpenText.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenText.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C893490A1E849A7087434F93 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		CA7FD66B420B79137FE17F10 /* OpenTextSetup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTextSetup.swift; sourceTree = "<group>"; };
+		D3CE6078D3BF6594734C3023 /* PDFPasswordView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFPasswordView.swift; sourceTree = "<group>"; };
 		D5E18135E094E644A72D0280 /* OpenTextKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenTextKit; path = Packages/OpenTextKit; sourceTree = SOURCE_ROOT; };
 		D9ACDA714101DF329462E6C3 /* OpenTextDesign */ = {isa = PBXFileReference; lastKnownFileType = folder; name = OpenTextDesign; path = Packages/OpenTextDesign; sourceTree = SOURCE_ROOT; };
 		F1A7518875CF3DBEA18E37D4 /* FinderExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FinderExtension.entitlements; sourceTree = "<group>"; };
@@ -146,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				913786DD947C498DC6D50E52 /* DocumentWindowView.swift */,
+				D3CE6078D3BF6594734C3023 /* PDFPasswordView.swift */,
 				B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */,
 				3178FDCDE7F6B4F1472D735F /* SetupHost.swift */,
 				682424D182245CB368B99D3F /* Sheets.swift */,
@@ -293,6 +296,7 @@
 				E7619E29BF09B5C967A2B1CD /* LockFlow.swift in Sources */,
 				B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */,
 				FC973CB35D3B5626A1D0EF83 /* OpenTextSetup.swift in Sources */,
+				02929DD07F13B1B87BDECD01 /* PDFPasswordView.swift in Sources */,
 				D4A3971E6A782BCFA66D2E61 /* QuickCreateHost.swift in Sources */,
 				A137568051447622F3D730E4 /* RecoveryPin.swift in Sources */,
 				096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */,

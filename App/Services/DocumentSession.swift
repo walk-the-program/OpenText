@@ -23,7 +23,7 @@ struct AnimatedGIFError: LocalizedError {
 /// A document opened from an .otlock lives only in memory; Save re-locks it over the same file.
 @MainActor
 final class DocumentSession: ObservableObject {
-    enum Content: Equatable { case loading, text(markdown: Bool), pdf, image, locked, failed(String) }
+    enum Content: Equatable { case loading, text(markdown: Bool), pdf, pdfPassword, image, locked, failed(String) }
     enum Sheet: Identifiable {
         case convert, lock, relock, recovery(String), result(Notice), pinMismatch(PinMismatch), changedOutside
         var id: String {
@@ -41,7 +41,9 @@ final class DocumentSession: ObservableObject {
 
     @Published private(set) var url: URL
     @Published private(set) var content: Content = .loading
-    @Published var text = ""
+    /// Not @Published: a keystroke must not re-render the window. The editor binding calls `textChanged()`;
+    /// programmatic changes (`setText`) announce themselves.
+    var text = ""
     @Published private(set) var isSaved = true
     @Published private(set) var pdf: PDFDocument?
     @Published private(set) var image: NSImage?
@@ -54,6 +56,8 @@ final class DocumentSession: ObservableObject {
     @Published private(set) var workLabel: String?
     /// Big text files open read-only: no editing, no autosave.
     @Published private(set) var isReadOnly = false
+    @Published var pdfPasswordError: String?
+    private var pdfPassword: String?
 
     let commands = DocumentCommands()
     private var latestImage: NSImage?
@@ -127,6 +131,7 @@ final class DocumentSession: ObservableObject {
         autosave?.cancel()
         memoryName = nil; sessionPassword = nil; imageSourceData = nil
         pdf = nil; image = nil; latestImage = nil; isReadOnly = false
+        pdfPassword = nil; pdfPasswordError = nil
         recordedMTime = Self.mtime(url)
         let file = url, kind = FileRouting.kind(for: url)
         let token = UUID()
@@ -172,7 +177,7 @@ final class DocumentSession: ObservableObject {
     private func apply(_ r: Loaded, kind: FileKind) {
         switch r {
         case .failed(let m): content = .failed(m)
-        case .pdf(let d): pdf = d; content = .pdf
+        case .pdf(let d): pdf = d; content = d.isLocked ? .pdfPassword : .pdf
         case .image(let i): image = i; latestImage = i; content = .image
         case .text(let s, let f, let readOnly):
             textFormat = f
@@ -202,6 +207,7 @@ final class DocumentSession: ObservableObject {
 
     private func setText(_ s: String) {
         loadingText = true
+        objectWillChange.send()
         text = s
         isSaved = true
         DispatchQueue.main.async { self.loadingText = false; self.commands.markSaved() }
@@ -294,7 +300,10 @@ final class DocumentSession: ObservableObject {
             guard let pdf else { throw OpenTextError.writeFailed(url) }
             PDFPageOps.flattenStamps(in: pdf)
             let box = UnsafeBox(value: pdf)
-            guard let data = await Task.detached(operation: { box.value.dataRepresentation() }).value else { throw OpenTextError.writeFailed(url) }
+            let pw = pdfPassword
+            let options: [PDFDocumentWriteOption: Any] = pw.map { [.userPasswordOption: $0, .ownerPasswordOption: $0] } ?? [:]
+            let optionBox = UnsafeBox(value: options)
+            guard let data = await Task.detached(operation: { box.value.dataRepresentation(options: optionBox.value) }).value else { throw OpenTextError.writeFailed(url) }
             return data
         case .image:
             guard let img = latestImage, let cg = ImageOps.cgImage(from: img) else { throw OpenTextError.writeFailed(url) }
@@ -416,6 +425,38 @@ final class DocumentSession: ObservableObject {
                 }
             } catch { fail("Recovery key", error) }
         }
+    }
+
+    // MARK: password-protected PDF
+
+    func unlockPDF(password: String) {
+        guard let pdf, pdf.isLocked else { return }
+        if pdf.unlock(withPassword: password) {
+            pdfPassword = password          // saving keeps the PDF protected with the same password
+            pdfPasswordError = nil
+            content = .pdf
+            settled()
+        } else {
+            pdfPasswordError = "That password isn't right."
+        }
+    }
+
+    // MARK: revert
+
+    var canRevert: Bool { hasUnsavedChanges && workLabel == nil }
+
+    /// File ▸ Revert to Saved: confirm, then reload from disk (an unlocked document asks for its password again).
+    func requestRevert() {
+        guard canRevert else { return }
+        let alert = NSAlert()
+        alert.messageText = "Revert to the saved version of \(title)?"
+        alert.informativeText = "Your changes since the last save will be lost."
+        alert.addButton(withTitle: "Revert")
+        alert.addButton(withTitle: "Cancel")
+        let done: (NSApplication.ModalResponse) -> Void = { [weak self] r in
+            if r == .alertFirstButtonReturn { self?.reloadFromDisk() }
+        }
+        if let window, window.isVisible { alert.beginSheetModal(for: window, completionHandler: done) } else { done(alert.runModal()) }
     }
 
     // MARK: window close and quit

@@ -74,6 +74,7 @@ struct OpenTextApp: App {
         CommandGroup(after: .newItem) {
             Divider()
             Button("Save") { doc?.save() }.keyboardShortcut("s").disabled(!(doc?.canSave ?? false))
+            Button("Revert to Saved…") { doc?.revert() }.disabled(!(doc?.canRevert ?? false))
             Button("Convert…") { doc?.convert() }.keyboardShortcut("e", modifiers: [.command, .shift]).disabled(doc == nil)
             Button("Lock…") { doc?.lock() }.keyboardShortcut("l", modifiers: [.command, .control]).disabled(doc == nil)
         }

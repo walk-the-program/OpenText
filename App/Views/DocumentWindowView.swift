@@ -10,6 +10,8 @@ struct DocActions {
     var save: () -> Void
     var convert: () -> Void
     var lock: () -> Void
+    var canRevert: Bool
+    var revert: () -> Void
 }
 struct DocActionsKey: FocusedValueKey { typealias Value = DocActions }
 extension FocusedValues {
@@ -48,6 +50,8 @@ struct DocumentWindowView: View {
                                                             saveSignature: SignatureStore.save),
                                   header: header, commands: session.commands)
                 }
+            case .pdfPassword:
+                PDFPasswordView(fileName: session.title, errorMessage: session.pdfPasswordError) { session.unlockPDF(password: $0) }
             case .image:
                 if let img = session.image {
                     ImageEditorView(image: img,
@@ -57,12 +61,13 @@ struct DocumentWindowView: View {
                                     header: header, commands: session.commands)
                 }
             case .text(let markdown):
-                TextEditorView(text: $session.text, isMarkdown: markdown, monospace: model.settings.txtMonospace,
+                TextEditorView(text: Binding(get: { session.text },
+                                             set: { session.text = $0; session.textChanged() }), isMarkdown: markdown, monospace: model.settings.txtMonospace,
                                isSaved: session.isSaved,
                                actions: TextEditorActions(onConvert: session.requestConvert, onLock: session.requestLock,
                                                           onToggleMonospace: { model.update { $0.txtMonospace.toggle() } }),
                                header: header, commands: session.commands)
-                    .onChange(of: session.text) { _, _ in session.textChanged() }
+                    .background(ReadOnlyTextGuard(readOnly: session.isReadOnly))
             }
         }
         .disabled(session.isFrozen || session.workLabel != nil)
@@ -79,7 +84,8 @@ struct DocumentWindowView: View {
         .background(WindowCloseGuard(session: session))
         .focusedSceneValue(\.documentCommands, session.commands)
         .focusedSceneValue(\.docActions, DocActions(canSave: session.canSave, save: { Task { await session.save() } },
-                                                    convert: session.requestConvert, lock: session.requestLock))
+                                                    convert: session.requestConvert, lock: session.requestLock,
+                                                    canRevert: session.canRevert, revert: session.requestRevert))
         .sheet(item: $session.sheet) { sheet in
             switch sheet {
             case .convert:
@@ -169,6 +175,22 @@ struct WindowCloseGuard: NSViewRepresentable {
         func windowWillClose(_ notification: Notification) {
             session.unregister()
             original?.windowWillClose?(notification)
+        }
+    }
+}
+
+/// The text editor has no read-only switch of its own; this turns editing off in its text view for very large files.
+struct ReadOnlyTextGuard: NSViewRepresentable {
+    let readOnly: Bool
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func updateNSView(_ v: NSView, context: Context) {
+        guard readOnly else { return }
+        DispatchQueue.main.async {
+            func walk(_ view: NSView) {
+                if let tv = view as? NSTextView { tv.isEditable = false }
+                view.subviews.forEach(walk)
+            }
+            if let root = v.window?.contentView { walk(root) }
         }
     }
 }

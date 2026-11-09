@@ -133,9 +133,9 @@ public struct PDFReaderView: View {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 10) {
                     ForEach(0..<model.pageCount, id: \.self) { index in
                         ThumbnailCell(model: model, index: index)
-                            .draggable("opentext-page:\(index)")
+                            .draggable(model.pagePayload(index))
                             .dropDestination(for: String.self) { items, _ in
-                                guard let raw = items.first, raw.hasPrefix("opentext-page:"), let from = Int(raw.dropFirst(14)) else { return false }
+                                guard let raw = items.first, let from = model.pageIndex(fromPayload: raw) else { return false }
                                 model.move(from: from, to: index, actions); return true
                             }
                             .dropDestination(for: URL.self) { urls, _ in model.insertFiles(urls, at: index + 1, actions) }
@@ -207,6 +207,8 @@ private struct ThumbnailCell: View {
 @MainActor @Observable
 final class PDFReaderModel {
     let document: PDFDocument
+    /// Identifies this document in page-drag payloads so drops from another document are ignored.
+    let id = UUID()
     weak var pdfView: PDFView?
     var currentIndex = 0
     var revision = 0                 // bumps when pages change; thumbnails and counts refresh
@@ -229,6 +231,16 @@ final class PDFReaderModel {
     var searchSummary: String {
         if query.isEmpty { return "" }
         return results.isEmpty ? "No matches" : "\(resultIndex + 1) of \(results.count)"
+    }
+
+    func pagePayload(_ index: Int) -> String { "opentext-page:\(id.uuidString):\(index)" }
+
+    /// The page index in a payload made by this document; nil for other documents or malformed text.
+    func pageIndex(fromPayload raw: String) -> Int? {
+        let parts = raw.split(separator: ":", omittingEmptySubsequences: false)
+        guard parts.count == 3, parts[0] == "opentext-page", parts[1] == Substring(id.uuidString),
+              let index = Int(parts[2]), index >= 0, index < document.pageCount else { return nil }
+        return index
     }
 
     func thumbnail(_ index: Int) -> NSImage? {

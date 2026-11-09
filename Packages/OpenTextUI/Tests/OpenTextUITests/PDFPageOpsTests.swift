@@ -128,4 +128,16 @@ func order(_ doc: PDFDocument) -> [String] {
         let reloadedPage = try #require(reloaded.page(at: 0))
         #expect(reloadedPage.bounds(for: .cropBox).size == crop.size)
     }
+
+    @Test @MainActor func dragPayloadIsScopedToItsDocument() {
+        let a = PDFReaderModel(document: makeDocument(pages: 3))
+        let b = PDFReaderModel(document: makeDocument(pages: 3))
+        let payload = a.pagePayload(2)
+        #expect(payload == "opentext-page:\(a.id.uuidString):2")
+        #expect(a.pageIndex(fromPayload: payload) == 2)
+        #expect(b.pageIndex(fromPayload: payload) == nil)               // other document
+        #expect(a.pageIndex(fromPayload: "opentext-page:2") == nil)     // legacy / missing id
+        #expect(a.pageIndex(fromPayload: "opentext-page:\(a.id.uuidString):9") == nil)
+        #expect(a.pageIndex(fromPayload: "junk") == nil)
+    }
 }

@@ -5,19 +5,29 @@ import OpenTextKit
 import OpenTextUI
 import OpenTextAppLogic
 
+struct PinMismatch {
+    var pinned: String
+    var current: String
+    var resume: Resume
+    enum Resume { case lock, save }
+}
+
 /// State of one document window: what is on screen, dirty tracking, save, format switch, convert, lock.
-/// A document opened from an .otlock lives only in memory (`inMemory`); plaintext never touches disk.
+/// A document opened from an .otlock lives only in memory; Save re-locks it over the same file.
 @MainActor
 final class DocumentSession: ObservableObject {
     enum Content: Equatable { case loading, text(markdown: Bool), pdf, image, locked, failed(String) }
     enum Sheet: Identifiable {
-        case convert, lock, recovery(String), result(Notice)
+        case convert, lock, relock, recovery(String), result(Notice), pinMismatch(PinMismatch), changedOutside
         var id: String {
             switch self {
             case .convert: "convert"
             case .lock: "lock"
+            case .relock: "relock"
             case .recovery: "recovery"
             case .result(let n): n.id.uuidString
+            case .pinMismatch: "pin"
+            case .changedOutside: "changed"
             }
         }
     }
@@ -30,13 +40,20 @@ final class DocumentSession: ObservableObject {
     @Published private(set) var image: NSImage?
     @Published var lockedMessage: String?
     @Published var sheet: Sheet?
-    /// Original name inside an unlocked .otlock; nil for ordinary files.
     @Published private(set) var memoryName: String?
+    /// Editor is frozen while a format switch runs.
+    @Published private(set) var isFrozen = false
+    /// Non-nil while PBKDF2 / re-locking runs off the main thread.
+    @Published private(set) var workLabel: String?
 
+    let commands = DocumentCommands()
     private var latestImage: NSImage?
-    private var dirtyBinary = false
     private var loadingText = false
     private var autosave: Task<Void, Never>?
+    private var recordedMTime: Date?
+    private var textEncoding: String.Encoding = .utf8
+    private var sessionPassword: String?
+    private var pendingNotice: Notice?
     private let engine = ConversionEngine()
 
     init(url: URL) {
@@ -49,7 +66,16 @@ final class DocumentSession: ObservableObject {
     var title: String { effectiveName.lastPathComponent }
     var format: String { FileRouting.canonicalExtension(effectiveName.pathExtension) }
     var canSave: Bool {
-        switch content { case .text, .pdf, .image: return !inMemory; default: return false }
+        switch content { case .text, .pdf, .image: return workLabel == nil; default: return false }
+    }
+
+    /// Anything the user would lose by closing now.
+    var hasUnsavedChanges: Bool {
+        switch content {
+        case .text: return !isSaved
+        case .pdf, .image: return commands.isDirty
+        default: return false
+        }
     }
 
     var targets: [String] {
@@ -57,11 +83,17 @@ final class DocumentSession: ObservableObject {
         return engine.targets(from: f).map(\.fileExtension)
     }
 
+    private static func mtime(_ url: URL) -> Date? {
+        (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+    }
+
     // MARK: loading
 
     func load() {
-        memoryName = nil
-        pdf = nil; image = nil; latestImage = nil; dirtyBinary = false
+        autosave?.cancel()
+        memoryName = nil; sessionPassword = nil
+        pdf = nil; image = nil; latestImage = nil
+        recordedMTime = Self.mtime(url)
         switch FileRouting.kind(for: url) {
         case .locked: content = .locked
         case .pdf:
@@ -69,92 +101,186 @@ final class DocumentSession: ObservableObject {
         case .image:
             if let i = NSImage(contentsOf: url) { image = i; latestImage = i; content = .image } else { content = .failed("This image can't be read.") }
         case .text, .markdown:
-            guard let s = Self.readText(try? Data(contentsOf: url)) else { content = .failed("This file can't be read."); return }
+            guard let data = try? Data(contentsOf: url), let (s, enc) = TextCoding.decode(data) else {
+                content = .failed("This file can't be read."); return
+            }
+            textEncoding = enc
             setText(s)
             content = .text(markdown: FileRouting.kind(for: url) == .markdown)
         case .unsupported: content = .failed("OpenText can't open this kind of file.")
         }
+        settled()
     }
 
-    private func present(data: Data, name: String) {
-        memoryName = name
-        pdf = nil; image = nil; latestImage = nil; dirtyBinary = false
-        let u = URL(fileURLWithPath: name)
-        switch FileRouting.kind(for: u) {
+    private func present(_ u: LockFlow.Unlocked) {
+        memoryName = u.originalName
+        sessionPassword = u.password
+        pdf = nil; image = nil; latestImage = nil
+        recordedMTime = Self.mtime(url)
+        let name = URL(fileURLWithPath: u.originalName)
+        switch FileRouting.kind(for: name) {
         case .pdf:
-            if let d = PDFDocument(data: data) { pdf = d; content = .pdf } else { content = .failed("This PDF can't be read.") }
+            if let d = PDFDocument(data: u.data) { pdf = d; content = .pdf } else { content = .failed("This PDF can't be read.") }
         case .image:
-            if let i = NSImage(data: data) { image = i; latestImage = i; content = .image } else { content = .failed("This image can't be read.") }
+            if let i = NSImage(data: u.data) { image = i; latestImage = i; content = .image } else { content = .failed("This image can't be read.") }
         case .text, .markdown:
-            guard let s = Self.readText(data) else { content = .failed("This file can't be read."); return }
+            guard let (s, enc) = TextCoding.decode(u.data) else { content = .failed("This file can't be read."); return }
+            textEncoding = enc
             setText(s)
-            content = .text(markdown: FileRouting.kind(for: u) == .markdown)
+            content = .text(markdown: FileRouting.kind(for: name) == .markdown)
         default: content = .failed("OpenText can't open the unlocked file.")
         }
+        settled()
+        if let w = u.warning { sheet = .result(Notice(title: "Touch ID", message: w)) }
     }
 
     private func setText(_ s: String) {
         loadingText = true
         text = s
         isSaved = true
-        DispatchQueue.main.async { self.loadingText = false }
+        DispatchQueue.main.async { self.loadingText = false; self.commands.markSaved() }
     }
 
-    private static func readText(_ data: Data?) -> String? {
-        guard let data else { return nil }
-        return String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
+    /// Fresh load: nothing is dirty yet.
+    private func settled() {
+        isSaved = true
+        DispatchQueue.main.async { self.commands.markSaved() }
     }
 
     // MARK: editing + saving
 
     func textChanged() {
-        guard !loadingText else { return }
+        guard !loadingText, !isFrozen else { return }
         isSaved = false
         guard !inMemory else { return }
         autosave?.cancel()
         autosave = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
-            self?.save()
+            _ = await self?.save()
         }
     }
-    func pdfChanged() { dirtyBinary = true }
-    func imageChanged(_ i: NSImage) { latestImage = i; dirtyBinary = true }
+    func pdfChanged() {}
+    func imageChanged(_ i: NSImage) { latestImage = i }
 
-    func save() {
+    private func markSavedNow() {
+        isSaved = true
+        commands.markSaved()
+        recordedMTime = Self.mtime(url)
+    }
+
+    private func fail(_ title: String, _ error: Error) {
+        sheet = .result(Notice(title: title, message: error.localizedDescription))
+    }
+
+    /// Returns true when the bytes are safely on disk. Refuses to overwrite a file that changed outside OpenText
+    /// unless `force` (the "Keep Mine" choice).
+    @discardableResult
+    func save(force: Bool = false) async -> Bool {
         autosave?.cancel()
-        if inMemory {
-            sheet = .result(Notice(title: "Locked file is read-only",
-                                   message: "Changes to an opened locked file can't be saved back yet."))
-            return
+        guard canSave, !isFrozen else { return false }
+        if !force && FileChangeCheck.hasChanged(recorded: recordedMTime, current: Self.mtime(url)) {
+            sheet = .changedOutside
+            return false
         }
         do {
+            if inMemory { return try await saveBack() }
             switch content {
             case .text:
-                try Data(text.utf8).write(to: url, options: .atomic)
-                isSaved = true
+                let (data, enc) = TextCoding.encode(text, as: textEncoding)
+                textEncoding = enc
+                try data.write(to: url, options: .atomic)
             case .pdf:
-                guard let pdf else { return }
+                guard let pdf else { return false }
                 PDFPageOps.flattenStamps(in: pdf)
                 guard let data = pdf.dataRepresentation() else { throw OpenTextError.writeFailed(url) }
                 try data.write(to: url, options: .atomic)
-                dirtyBinary = false
             case .image:
-                guard let img = latestImage else { return }
+                guard let img = latestImage else { return false }
                 guard let data = Self.encode(img, ext: format) else {
                     throw ToolError("OpenText can't save \(format) images. Use Convert to make a png or jpg.")
                 }
                 try data.write(to: url, options: .atomic)
-                dirtyBinary = false
-            default: break
+            default: return false
             }
+            markSavedNow()
+            return true
         } catch {
-            sheet = .result(Notice(title: "Could not save", message: error.localizedDescription))
+            fail("Could not save", error)
+            return false
         }
     }
 
-    /// Saves any pending edits before the file is converted or locked.
-    private func flush() { if !inMemory && (!isSaved || dirtyBinary) { save() } }
+    /// Current document bytes for re-locking.
+    private func currentData() -> Data? {
+        switch content {
+        case .text:
+            let (d, enc) = TextCoding.encode(text, as: textEncoding)
+            textEncoding = enc
+            return d
+        case .pdf:
+            guard let pdf else { return nil }
+            PDFPageOps.flattenStamps(in: pdf)
+            return pdf.dataRepresentation()
+        case .image:
+            guard let img = latestImage else { return nil }
+            return Self.encode(img, ext: format)
+        default: return nil
+        }
+    }
+
+    private func saveBack() async throws -> Bool {
+        guard let name = memoryName else { return false }
+        guard let password = sessionPassword else { sheet = .relock; return false }   // unlocked by recovery key: ask for a new password
+        switch try LockFlow.checkRecovery(model: .shared) {
+        case .mismatch(_, _):
+            presentMismatch(resume: .save)
+            return false
+        default: break
+        }
+        guard let data = currentData() else { throw ToolError("This document can't be saved in its original format.") }
+        workLabel = "Locking…"
+        defer { workLabel = nil }
+        let warning = try await LockFlow.saveBack(data: data, name: name, to: url, password: password, model: .shared)
+        markSavedNow()
+        if let warning { sheet = .result(Notice(title: "Touch ID", message: warning)) }
+        return true
+    }
+
+    /// Sets a new password for a document that was unlocked with the recovery key, then saves.
+    func setNewPasswordAndSave(password: String, confirm: String) async throws {
+        if let p = PasswordRules.validate(password: password, confirm: confirm) { throw LockFlow.FlowError.password(p) }
+        sessionPassword = password
+        sheet = nil
+        await save(force: true)
+    }
+
+    private func presentMismatch(resume: PinMismatch.Resume) {
+        let pinned = RecoveryPin.read().map(LockFlow.fingerprint) ?? "unknown"
+        let current = AppModel.shared.settings.recoveryPublicKey.map(LockFlow.fingerprint) ?? "unknown"
+        sheet = .pinMismatch(PinMismatch(pinned: pinned, current: current, resume: resume))
+    }
+
+    func resolveMismatch(_ m: PinMismatch, keepOriginal: Bool) {
+        Task {
+            do {
+                if keepOriginal {
+                    LockFlow.keepOriginalKey(model: .shared)
+                } else {
+                    guard try await LockFlow.acceptNewKey(model: .shared) else { return }
+                }
+                sheet = nil
+                switch m.resume {
+                case .lock: sheet = .lock
+                case .save: await save()
+                }
+            } catch { fail("Recovery key", error) }
+        }
+    }
+
+    // MARK: window close
+
+    func saveBeforeClosing() async -> Bool { await save() }
 
     static func encode(_ image: NSImage, ext: String) -> Data? {
         let type: UTType
@@ -174,34 +300,43 @@ final class DocumentSession: ObservableObject {
         return CGImageDestinationFinalize(dest) ? out as Data : nil
     }
 
+    // MARK: changed outside
+
+    func reloadFromDisk() { sheet = nil; if inMemory { lockedAgain() } else { load() } }
+    func keepMine() { sheet = nil; Task { await save(force: true) } }
+    private func lockedAgain() { memoryName = nil; sessionPassword = nil; content = .locked }
+
     // MARK: format chip + convert
 
     func switchFormat(to ext: String) {
-        guard let fmt = DocFormat(name: ext), !inMemory else { return }
-        flush()
+        guard let fmt = DocFormat(name: ext), !inMemory, !isFrozen else { return }
+        autosave?.cancel()
         let from = url, engine = self.engine
         Task {
+            if hasUnsavedChanges, !(await save()) { return }   // a conflict or error stops the switch
+            isFrozen = true                                     // no typing or autosave while the file is swapped
+            defer { isFrozen = false }
             do {
                 let new = try await Task.detached { try engine.switchFormat(from, to: fmt) }.value
                 url = new
                 load()
             } catch {
-                sheet = .result(Notice(title: "Could not change format", message: error.localizedDescription))
+                fail("Could not change format", error)
             }
         }
     }
 
     func convert(to ext: String) {
         guard let fmt = DocFormat(name: ext) else { return }
-        flush()
         let from = url, engine = self.engine
         Task {
+            if !inMemory && (hasUnsavedChanges), !(await save()) { return }
             do {
                 let out = try await Task.detached { try engine.convert(from, to: fmt) }.value
                 sheet = .result(Notice(title: "Converted", message: out.map(\.lastPathComponent).joined(separator: "\n"),
                                        revealURL: out.first))
             } catch {
-                sheet = .result(Notice(title: "Could not convert", message: error.localizedDescription))
+                fail("Could not convert", error)
             }
         }
     }
@@ -220,32 +355,59 @@ final class DocumentSession: ObservableObject {
 
     func requestLock() {
         guard !inMemory, content != .locked, content != .loading else { return }
-        flush()
-        sheet = .lock
+        Task {
+            if hasUnsavedChanges, !(await save()) { return }
+            do {
+                if case .mismatch = try LockFlow.checkRecovery(model: .shared) { presentMismatch(resume: .lock); return }
+                sheet = .lock
+            } catch { fail("Recovery key", error) }
+        }
     }
 
-    func lock(password: String, confirm: String, model: AppModel) throws {
-        let out = try LockFlow.lock(url, password: password, confirm: confirm, model: model)
-        url = out.lockedURL
-        load()
-        sheet = out.recoveryKeyToShow.map { .recovery($0) }
+    /// Fingerprint line for the lock sheet.
+    var recoveryFingerprintText: String {
+        guard let k = AppModel.shared.settings.recoveryPublicKey else {
+            return "A new recovery key will be created and shown once."
+        }
+        return "Recovery key fingerprint: \(LockFlow.fingerprint(k))"
+    }
+
+    func lock(password: String, confirm: String, model: AppModel) async throws {
+        workLabel = "Locking…"
+        defer { workLabel = nil }
+        let out = try await LockFlow.lock(url, password: password, confirm: confirm, model: model)
+        var lines: [String] = []
+        if out.originalStillThere {
+            lines.append("The locked file was created, but the original is still at \(url.path). Move it to the Trash yourself.")
+        } else {
+            lines.append("The original is in the Trash. Empty the Trash to remove it completely.")
+        }
+        lines += out.warnings
+        let title = out.originalStillThere ? "Locked, original not removed" : "Locked"
+        pendingNotice = Notice(title: title, message: lines.joined(separator: "\n\n"))
+        if let locked = out.lockedURL { url = locked; load() }
+        if let key = out.recoveryKeyToShow {
+            sheet = .recovery(key)
+        } else {
+            sheet = .result(pendingNotice!)
+            pendingNotice = nil
+        }
+    }
+
+    func recoveryKeyShown() {
+        sheet = pendingNotice.map { .result($0) }
+        pendingNotice = nil
     }
 
     func unlock(_ method: UnlockMethod, model: AppModel) {
         lockedMessage = nil
-        if case .recoveryKey(let key) = method {
-            do { url = try LockFlow.unlockRecovery(url, key: key); load() }
-            catch { lockedMessage = error.localizedDescription }
-            return
-        }
+        guard workLabel == nil else { return }
+        workLabel = "Unlocking…"
         let file = url
         Task {
-            do {
-                let r = try await LockFlow.decrypt(file, method: method, model: model)
-                present(data: r.data, name: r.originalName)
-            } catch {
-                lockedMessage = error.localizedDescription
-            }
+            defer { workLabel = nil }
+            do { present(try await LockFlow.decrypt(file, method: method, model: model)) }
+            catch { lockedMessage = error.localizedDescription }
         }
     }
 }

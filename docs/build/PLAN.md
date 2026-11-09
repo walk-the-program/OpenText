@@ -112,8 +112,8 @@ xcodegen `project.yml` → `OpenText.xcodeproj`; targets `OpenText` (app, bundle
 | T2 Design + UI kit + views | W2 | — | accepted (32 tests pass, snapshots reviewed) |
 | T3a App shell, project, Finder extension, hotkey, settings, lock flow | W3 | contracts above | accepted (signed build verified with team 7ZT7J8C9QP) |
 | T3b Wire views and engine into the app, full build | W3 | T1, T2 accepted | accepted (signed Debug+Release, 0 errors) |
-| T5a Kit gaps: lock from data, in-memory recovery decrypt, setupShown setting | W1b | T3b | running |
-| T5b UI hooks: shortcut recorder slot, menu command hooks, dirty state | W2b | T3b | running |
-| T5c Independent security review (read-only) | R1 | T3b | running |
-| T5d App wiring of T5a/T5b, unsaved-changes prompts | W3 | T5a, T5b | planned |
+| T5a Kit gaps: lock from data, in-memory recovery decrypt, setupShown setting | W1b | T3b | accepted |
+| T5b UI hooks: shortcut recorder slot, menu command hooks, dirty state | W2b | T3b | accepted |
+| T5c Independent security review (read-only) | R1 | T3b | accepted (docs/build/security-review.md) |
+| T5d+T6a+T6b Hooks, engine and app security fixes | W1b, W3 | T5a, T5b, T5c | accepted (unsigned builds; signed build blocked on Xcode sign-in) |
 | T4 Integration verification, commit, handoff note | Coordinator | T3b | planned |

@@ -1,5 +1,6 @@
 import SwiftUI
 import OpenTextUI
+import KeyboardShortcuts
 
 /// SetupView wired to SetupActions. Nothing happens until the user presses a button.
 struct SetupHost: View {
@@ -12,7 +13,10 @@ struct SetupHost: View {
             onMakeDefault: { Task { _ = await OpenTextSetup.makeDefault(); refresh() } },
             onOpenFinderSettings: { OpenTextSetup.openExtensionSettings() },
             onShortcutChanged: { new in model.update { $0.hotkey = new }; refresh() },
-            onDone: { dismissWindow(id: "setup") }))
+            onDone: { dismissWindow(id: "setup") }),
+            shortcutRecorder: AnyView(KeyboardShortcuts.Recorder(for: .quickCreate) { _ in
+                model.shortcutRecorded(); refresh()
+            }))
         .frame(width: 900, height: 440)
         .onAppear(perform: refresh)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }

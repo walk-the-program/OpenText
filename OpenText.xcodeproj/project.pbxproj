@@ -18,6 +18,7 @@
 		749AEE684A352318E40980C7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893490A1E849A7087434F93 /* AppModel.swift */; };
 		83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */; };
 		9399E640D29FFC4BE2E7147B /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694B0C728DC3C5F0B006918B /* HotkeyManager.swift */; };
+		A137568051447622F3D730E4 /* RecoveryPin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC2EA3EB2F5A4436A942C25 /* RecoveryPin.swift */; };
 		B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */; };
 		BCEDB7D4577DA2C7456338F1 /* BiometricKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */; };
 		C432D992C5193E82A8FF60CD /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */; };
@@ -62,6 +63,7 @@
 		1F02A07C4A27B1776C470A3D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3178FDCDE7F6B4F1472D735F /* SetupHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupHost.swift; sourceTree = "<group>"; };
 		57953B9B9E13D439B5175573 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		5AC2EA3EB2F5A4436A942C25 /* RecoveryPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryPin.swift; sourceTree = "<group>"; };
 		61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricKeychain.swift; sourceTree = "<group>"; };
 		682424D182245CB368B99D3F /* Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sheets.swift; sourceTree = "<group>"; };
 		694B0C728DC3C5F0B006918B /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
@@ -114,6 +116,7 @@
 				694B0C728DC3C5F0B006918B /* HotkeyManager.swift */,
 				100B2CD95EB9A2CC40DED647 /* LockFlow.swift */,
 				CA7FD66B420B79137FE17F10 /* OpenTextSetup.swift */,
+				5AC2EA3EB2F5A4436A942C25 /* RecoveryPin.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -291,6 +294,7 @@
 				B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */,
 				FC973CB35D3B5626A1D0EF83 /* OpenTextSetup.swift in Sources */,
 				D4A3971E6A782BCFA66D2E61 /* QuickCreateHost.swift in Sources */,
+				A137568051447622F3D730E4 /* RecoveryPin.swift in Sources */,
 				096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */,
 				07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */,
 			);

@@ -29,10 +29,18 @@ Claude Code MCP config line (run by Walker; nothing outside the repo is edited h
 `claude mcp add opentext -- /Users/walker_tracy/Desktop/Projects/OpenText/Packages/OpenTextKit/.build/release/opentext-mcp`
 See docs/build/cli-mcp.md for tools and arguments.
 
+## T5d + T6b additions
+- Menus drive views through `DocumentCommands` (`session.commands`, `.focusedSceneValue(\.documentCommands, ...)`): Edit > Find; View > Zoom In/Out/Actual Size/Thumbnails; Markdown > Heading 1-3, Bold, Italic, List, Link; Image > Crop, Resize, Rotate, Flip H/V. Highlight, Sign, Edit/Preview, Mono stay in the views. Save / Convert / Lock keep their menu items; an event is consumed once, so a key never fires twice.
+- Close prompt (Save / Don't Save / Cancel) for windows with unsaved changes (`WindowCloseGuard` in DocumentWindowView.swift); `markSaved()` after every save and load; the close button shows the edited dot.
+- Opened .otlock documents are editable: Save calls `Locker.lock(data:...output: original)` off the main thread with the session password, then stores Touch ID under the new `Locker.lockID(of:)` and deletes the old item. Unlocking with the recovery key has no password, so Save asks for a new one. PBKDF2 (unlock, lock, save-back) runs off the main thread with a progress overlay.
+- Security: (1) URL token in the app-group container (`TokenStore`, group `7ZT7J8C9QP.com.walkertracy.opentext`); unsigned URLs ask first (`ConfirmationPolicy`, one dialog at a time); paths must be inside $HOME and outside ~/Library after symlink resolution (`PathPolicy`/`RouteGuard`). (2) Recovery public key pinned in the Keychain (`RecoveryPin`); `PinPolicy` decides; mismatch blocks locking and save-back with Keep original / Accept new (Touch ID or Mac password); fingerprint shown in the lock sheet. (3) `originalNotRemoved` and the Trash message in `DocumentSession.lock`. (4) Save checks the modification date (Reload / Keep Mine), frozen editor during format switch, original text encoding kept (`TextCoding`). (5) keychain-access-groups entitlement, add-then-update, store errors shown in the UI.
+- First-launch flag now `OpenTextSettings.setupShown` (UserDefaults value migrated once). Setup uses `KeyboardShortcuts.Recorder` via `shortcutRecorder`.
+
+## Signing note
+App group + keychain-access-groups are restricted entitlements and need a provisioning profile. This Mac's Xcode has no Apple ID signed in (Settings > Accounts), so `-allowProvisioningUpdates` fails with "No Accounts / No profiles for com.walkertracy.opentext". Walker: sign in under Xcode > Settings > Accounts, then run the signed build command above; Xcode registers the App ID and the app group. Unsigned compile check: add `CODE_SIGNING_ALLOWED=NO`.
+
 ## Known gaps
-- Saving edits to a document opened from an .otlock is not possible without writing plaintext: `Locker.lock` only takes a file URL. Those windows are read-only (Save explains). Needs `Locker.lock(data:name:password:recoveryPublicKeyBase64:output:)` in OpenTextKit.
-- No unsaved-changes prompt on closing a PDF or image window (text autosaves).
-- Menu items for Find / Zoom / Thumbnails / Markdown are not present: OpenTextUI exposes no external hooks, the shortcuts live on in-view buttons.
-- Not launched or UI-tested (constraint): `RouterBridge` handing `openWindow` to the model from the MenuBarExtra label, hidden-title-bar layout, the hotkey and Finder menus are verified by build only.
-- Keychain with `.biometryCurrentSet` is compiled and signed but untested (no Keychain access in this task).
-- Animated GIFs lose extra frames when saved from the image editor.
+- Not launched or UI-tested (constraint): RouterBridge, hidden-title-bar layout, hotkey, Finder menu, close prompt delegate forwarding, Touch ID flows.
+- No unsaved-changes prompt on Cmd-Q (only on closing a window).
+- Animated GIFs lose extra frames when saved from the image editor; webp cannot be saved.
+- `findLockedSibling` guesses the new .otlock by name prefix when the original could not be trashed.

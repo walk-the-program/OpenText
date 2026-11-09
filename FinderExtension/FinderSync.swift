@@ -42,6 +42,9 @@ final class FinderSync: FIFinderSync {
         return menu.items.isEmpty ? nil : menu
     }
 
+    /// Shared secret from the app-group container; without it the app asks Walker to confirm each action.
+    private var token: String? { TokenStore.groupContainer().flatMap { TokenStore.read(in: $0) } }
+
     private func item(_ title: String, _ action: Selector) -> NSMenuItem {
         let i = NSMenuItem(title: title, action: action, keyEquivalent: "")
         i.target = self
@@ -53,19 +56,19 @@ final class FinderSync: FIFinderSync {
 
     private func create(_ format: String) {
         let dir = FIFinderSyncController.default().targetedURL()
-        NSWorkspace.shared.open(URLRouter.newURL(format: format, dir: dir))
+        NSWorkspace.shared.open(URLRouter.newURL(format: format, dir: dir, token: token))
     }
 
     @objc private func convertTo(_ sender: NSMenuItem) {
         guard let fmt = sender.representedObject as? String else { return }
         for file in FIFinderSyncController.default().selectedItemURLs() ?? [] {
-            NSWorkspace.shared.open(URLRouter.convertURL(to: fmt, file: file))
+            NSWorkspace.shared.open(URLRouter.convertURL(to: fmt, file: file, token: token))
         }
     }
 
     @objc private func lock(_ sender: Any?) {
         for file in FIFinderSyncController.default().selectedItemURLs() ?? [] {
-            NSWorkspace.shared.open(URLRouter.lockURL(file: file))
+            NSWorkspace.shared.open(URLRouter.lockURL(file: file, token: token))
         }
     }
 }

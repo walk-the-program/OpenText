@@ -12,6 +12,7 @@ struct OpenTextApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = AppModel.shared
     @FocusedValue(\.docActions) private var doc
+    @FocusedValue(\.documentCommands) private var cmds
 
     init() { Brand.registerFonts() }
 
@@ -56,8 +57,15 @@ struct OpenTextApp: App {
         .defaultLaunchBehavior(.suppressed)
     }
 
+    private func item(_ title: String, _ c: DocumentCommands.Command, _ key: KeyEquivalent,
+                      _ mods: EventModifiers = .command) -> some View {
+        Button(title) { cmds?.perform(c) }
+            .keyboardShortcut(key, modifiers: mods)
+            .disabled(!(cmds?.isAvailable(c) ?? false))
+    }
+
     /// One menu set. Where a view also binds the same key (Save, Convert), the menu item wins, so each
-    /// key does one thing. Find, Zoom, Thumbnails and the Markdown tools are bound inside the views.
+    /// key does one thing. Edit, View, Markdown and Image items drive the view through DocumentCommands; Highlight, Sign, Edit/Preview and Mono stay in the views.
     @CommandsBuilder private var menus: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New…") { model.showQuickCreate() }.keyboardShortcut("n")
@@ -68,6 +76,31 @@ struct OpenTextApp: App {
             Button("Save") { doc?.save() }.keyboardShortcut("s").disabled(!(doc?.canSave ?? false))
             Button("Convert…") { doc?.convert() }.keyboardShortcut("e", modifiers: [.command, .shift]).disabled(doc == nil)
             Button("Lock…") { doc?.lock() }.keyboardShortcut("l", modifiers: [.command, .control]).disabled(doc == nil)
+        }
+        CommandGroup(after: .textEditing) {
+            item("Find", .find, "f")
+        }
+        CommandGroup(after: .toolbar) {
+            item("Zoom In", .zoomIn, "=")
+            item("Zoom Out", .zoomOut, "-")
+            item("Actual Size", .actualSize, "0")
+            item("Thumbnails", .toggleThumbnails, "s", [.command, .option])
+        }
+        CommandMenu("Markdown") {
+            item("Heading 1", .heading(1), "1")
+            item("Heading 2", .heading(2), "2")
+            item("Heading 3", .heading(3), "3")
+            item("Bold", .bold, "b")
+            item("Italic", .italic, "i")
+            item("List", .list, "l", [.command, .shift])
+            item("Link", .link, "k")
+        }
+        CommandMenu("Image") {
+            item("Crop", .crop, "k")
+            item("Resize…", .resize, "i", [.command, .option])
+            item("Rotate", .rotate, "r")
+            item("Flip Horizontal", .flipHorizontal, "h", [.command, .control])
+            item("Flip Vertical", .flipVertical, "v", [.command, .control])
         }
         CommandGroup(after: .appSettings) {
             Button("Set Up OpenText…") { model.showSetup() }

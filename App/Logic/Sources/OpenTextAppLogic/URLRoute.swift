@@ -52,7 +52,14 @@ public enum URLRouter {
         return URL(fileURLWithPath: expanded).standardizedFileURL
     }
 
-    private static func build(_ action: String, _ items: [URLQueryItem]) -> URL {
+    /// The `token` query value, if any.
+    public static func token(in url: URL) -> String? {
+        URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "token" })?.value
+    }
+
+    private static func build(_ action: String, _ items: [URLQueryItem], token: String?) -> URL {
+        var items = items
+        if let token { items.append(URLQueryItem(name: "token", value: token)) }
         var c = URLComponents()
         c.scheme = scheme
         c.host = action
@@ -60,15 +67,15 @@ public enum URLRouter {
         return c.url!
     }
 
-    public static func newURL(format: String, dir: URL?) -> URL {
+    public static func newURL(format: String, dir: URL?, token: String? = nil) -> URL {
         var items = [URLQueryItem(name: "format", value: format)]
         if let dir { items.append(URLQueryItem(name: "dir", value: dir.path)) }
-        return build("new", items)
+        return build("new", items, token: token)
     }
-    public static func convertURL(to: String, file: URL) -> URL {
-        build("convert", [URLQueryItem(name: "to", value: to), URLQueryItem(name: "file", value: file.path)])
+    public static func convertURL(to: String, file: URL, token: String? = nil) -> URL {
+        build("convert", [URLQueryItem(name: "to", value: to), URLQueryItem(name: "file", value: file.path)], token: token)
     }
-    public static func lockURL(file: URL) -> URL {
-        build("lock", [URLQueryItem(name: "file", value: file.path)])
+    public static func lockURL(file: URL, token: String? = nil) -> URL {
+        build("lock", [URLQueryItem(name: "file", value: file.path)], token: token)
     }
 }

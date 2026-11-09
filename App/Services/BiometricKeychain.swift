@@ -8,6 +8,8 @@ import Security
 /// Real implementation (not a stand-in). Never called at launch or from tests.
 enum BiometricKeychain {
     static let service = "com.walkertracy.opentext.lock"
+    /// Matches the keychain-access-groups entitlement ($(AppIdentifierPrefix)com.walkertracy.opentext).
+    static let accessGroup = "7ZT7J8C9QP.com.walkertracy.opentext"
 
     enum KeychainError: LocalizedError {
         case unavailable, status(OSStatus), badData
@@ -29,6 +31,7 @@ enum BiometricKeychain {
         [kSecClass as String: kSecClassGenericPassword,
          kSecAttrService as String: service,
          kSecAttrAccount as String: account,
+         kSecAttrAccessGroup as String: accessGroup,
          kSecUseDataProtectionKeychain as String: true]
     }
 
@@ -38,11 +41,15 @@ enum BiometricKeychain {
             nil, kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly, .biometryCurrentSet, &cfErr) else {
             throw KeychainError.unavailable
         }
-        SecItemDelete(baseQuery(account: account) as CFDictionary)
         var q = baseQuery(account: account)
         q[kSecValueData as String] = Data(password.utf8)
         q[kSecAttrAccessControl as String] = access
-        let status = SecItemAdd(q as CFDictionary, nil)
+        var status = SecItemAdd(q as CFDictionary, nil)
+        if status == errSecDuplicateItem {
+            let changes: [String: Any] = [kSecValueData as String: Data(password.utf8),
+                                          kSecAttrAccessControl as String: access]
+            status = SecItemUpdate(baseQuery(account: account) as CFDictionary, changes as CFDictionary)
+        }
         guard status == errSecSuccess else { throw KeychainError.status(status) }
     }
 

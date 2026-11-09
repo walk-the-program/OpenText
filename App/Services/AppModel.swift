@@ -8,6 +8,7 @@ extension OpenTextSettings {
     func same(as o: OpenTextSettings) -> Bool {
         defaultFolder == o.defaultFolder && hotkey == o.hotkey && recoveryPublicKey == o.recoveryPublicKey
             && useTouchID == o.useTouchID && txtMonospace == o.txtMonospace && lastNewFileFormat == o.lastNewFileFormat
+            && setupShown == o.setupShown
     }
 }
 
@@ -36,6 +37,9 @@ final class AppModel: ObservableObject {
     private var pending: [() -> Void] = []
     private var lastHandled: (url: URL, at: Date)?
     private var started = false
+    private var confirmGate = OneAtATime()
+    /// Random per-launch secret shared with the Finder extension through the app-group container.
+    private var urlToken: String?
     private let engine = ConversionEngine()
 
     // MARK: lifecycle
@@ -44,6 +48,7 @@ final class AppModel: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
+        publishURLToken()
         HotkeyManager.shared.start { [weak self] in self?.showQuickCreate() }
         syncHotkeyFromFile()
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
@@ -54,8 +59,13 @@ final class AppModel: ObservableObject {
         pending = []
         flushed.forEach { $0() }
         // First launch only; the window just shows the tiles and never acts by itself.
-        if !UserDefaults.standard.bool(forKey: "setupShown") && flushed.isEmpty {
-            UserDefaults.standard.set(true, forKey: "setupShown")
+        // Migrate the old UserDefaults flag once.
+        if UserDefaults.standard.bool(forKey: "setupShown") {
+            UserDefaults.standard.removeObject(forKey: "setupShown")
+            if !settings.setupShown { update { $0.setupShown = true } }
+        }
+        if !settings.setupShown && flushed.isEmpty {
+            update { $0.setupShown = true }
             showSetup()
         }
     }
@@ -80,6 +90,18 @@ final class AppModel: ObservableObject {
         settings = s
         do { try s.save() } catch { notice = Notice(title: "Settings not saved", message: error.localizedDescription) }
         if hotkeyChanged { hotkeyValid = HotkeyManager.shared.apply(s.hotkey) }
+    }
+
+    /// Called by the shortcut recorder: mirror the new shortcut into settings.json.
+    func shortcutRecorded() {
+        guard let str = HotkeyManager.shared.currentString else { return }
+        hotkeyValid = true
+        if str != settings.hotkey { update { $0.hotkey = str } }
+    }
+
+    private func publishURLToken() {
+        guard let dir = TokenStore.groupContainer() else { return }   // no app group: every URL asks first
+        urlToken = try? TokenStore.rotate(in: dir)
     }
 
     private func reloadSettingsFromDisk() {
@@ -138,18 +160,41 @@ final class AppModel: ObservableObject {
     // MARK: URL / file entry point
 
     /// Handles file URLs and opentext:// URLs from application(_:open:) and .onOpenURL.
+    /// Signed URLs (valid token from the Finder extension) run; unsigned ones ask first. Paths must stay in $HOME.
     func handle(_ url: URL) {
         if let last = lastHandled, last.url == url, Date().timeIntervalSince(last.at) < 1 { return }
         lastHandled = (url, Date())
         if url.isFileURL { openFile(url); return }
         do {
-            switch try URLRouter.parse(url) {
-            case .new(let format, let dir): createNew(format: format, name: "Untitled", in: dir)
-            case .convert(let to, let file): convertInBackground(file, to: to)
-            case .lock(let file): openFile(file); lockRequest = file
+            let route = try RouteGuard.validate(try URLRouter.parse(url))
+            let signed = TokenStore.matches(URLRouter.token(in: url), expected: urlToken)
+            switch ConfirmationPolicy.decide(route, tokenValid: signed, defaultFolder: settings.defaultFolderURL) {
+            case .run: perform(route)
+            case .confirm(let title, let detail): confirm(title: title, detail: detail) { self.perform(route) }
             }
         } catch {
             showNotice(Notice(title: "Link ignored", message: "\(url.absoluteString)\n\(error)"))
+        }
+    }
+
+    private func confirm(title: String, detail: String, run: @escaping () -> Void) {
+        guard confirmGate.begin() else { return }       // one unsigned-URL dialog at a time
+        NSApp.activate()
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = detail + "\n\nOnly continue if you asked for this."
+        alert.addButton(withTitle: "Continue")
+        alert.addButton(withTitle: "Cancel")
+        let response = alert.runModal()
+        confirmGate.end()
+        if response == .alertFirstButtonReturn { run() }
+    }
+
+    private func perform(_ route: AppRoute) {
+        switch route {
+        case .new(let format, let dir): createNew(format: format, name: "Untitled", in: dir)
+        case .convert(let to, let file): convertInBackground(file, to: to)
+        case .lock(let file): openFile(file); lockRequest = file
         }
     }
 

@@ -14,54 +14,70 @@ struct OpenTextApp: App {
     @FocusedValue(\.docActions) private var doc
     @FocusedValue(\.documentCommands) private var cmds
 
-    init() { Brand.registerFonts() }
+    init() { Brand.registerFonts(); SelfTest.prepare() }
 
+    // Every scene except the bridge opts out of SwiftUI's own file/URL routing (`handlesExternalEvents(matching: [])`):
+    // external opens reach AppDelegate.application(_:open:) exactly once and AppModel routes them. The bridge keeps
+    // the default: with `[]` on it, a launch-with-file presents no scene at all, so openWindow never comes alive
+    // (self-test launch-with-file). It never shows content, so it can't produce a stray window.
     var body: some Scene {
-        WindowGroup("OpenText", for: URL.self) { $url in
-            if let url {
-                DocumentWindowView(url: url)
-                    .environmentObject(model)
-                    .modifier(RouterBridge())
-            }
-        }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 980, height: 720)
-        .defaultLaunchBehavior(.suppressed)
-        .commands { menus }
-
-        Window("OpenText", id: "home") {
-            HomeHost().environmentObject(model).modifier(RouterBridge())
+        // Permanent invisible window; its view holds the only RouterBridge, so openWindow is always live.
+        Window("", id: "bridge") {
+            BridgeView().environmentObject(model)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.presented)
 
-        MenuBarExtra {
-            QuickCreateHost(isPopover: true).environmentObject(model).modifier(RouterBridge())
-        } label: {
-            // The label's environment cannot open windows, so it carries no bridge.
-            Image(nsImage: BrandMark.templateImage(pointSize: 16))
+        WindowGroup("OpenText", for: URL.self) { $url in
+            if let url {
+                DocumentWindowView(url: url).environmentObject(model)
+            }
         }
-        .menuBarExtraStyle(.window)
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 980, height: 720)
+        .defaultLaunchBehavior(.suppressed)
+        .handlesExternalEvents(matching: [])
+        .commands { menus }
 
-        Window("Quick Create", id: "quick-create") {
-            QuickCreateHost(isPopover: false).environmentObject(model).modifier(RouterBridge())
+        // Shown by AppDelegate.applicationDidFinishLaunching, and only when launch wasn't for files.
+        Window("OpenText", id: "home") {
+            HomeHost().environmentObject(model)
         }
         .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
+        .handlesExternalEvents(matching: [])
+
+        MenuBarExtra(isInserted: .constant(!SelfTest.enabled)) {
+            QuickCreateHost(isPopover: true).environmentObject(model)
+        } label: {
+            Image(nsImage: BrandMark.templateImage(pointSize: 16))
+        }
+        .menuBarExtraStyle(.window)
+        .handlesExternalEvents(matching: [])
+
+        Window("Quick Create", id: "quick-create") {
+            QuickCreateHost(isPopover: false).environmentObject(model)
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultLaunchBehavior(.suppressed)
+        .handlesExternalEvents(matching: [])
 
         Window("Set up OpenText", id: "setup") {
-            SetupHost().environmentObject(model).modifier(RouterBridge())
+            SetupHost().environmentObject(model)
         }
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
+        .handlesExternalEvents(matching: [])
 
         Window("OpenText", id: "notice") {
-            NoticeWindowView().environmentObject(model).modifier(RouterBridge())
+            NoticeWindowView().environmentObject(model)
         }
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
+        .handlesExternalEvents(matching: [])
     }
 
     private func item(_ title: String, _ c: DocumentCommands.Command, _ key: KeyEquivalent,
@@ -119,20 +135,43 @@ struct OpenTextApp: App {
     }
 }
 
-/// Hands SwiftUI's openWindow / dismissWindow to AppModel and forwards .onOpenURL.
-/// Attached to every live window root (and the menu bar popover); the most recent attach wins.
+/// Hands SwiftUI's openWindow to AppModel. Used only by BridgeView, the permanent window.
 struct RouterBridge: ViewModifier {
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
     func body(content: Content) -> some View {
-        content
-            .onAppear { AppModel.shared.attach(openWindow, dismissWindow) }
-            .onOpenURL { AppModel.shared.handle($0) }
+        content.onAppear {
+            AppModel.shared.attach(openDocument: { openWindow(value: $0) }, openNamed: { openWindow(id: $0) })
+        }
     }
 }
 
-extension AppModel {
-    func attach(_ open: OpenWindowAction, _ dismiss: DismissWindowAction) {
-        attach(openDocument: { open(value: $0) }, openNamed: { open(id: $0) }, dismissNamed: { dismiss(id: $0) })
+/// Root of the bridge window: 1x1, transparent, off-screen, never in the Windows menu, never closable.
+struct BridgeView: View {
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .background(BridgeWindowConfigurator())
+            .modifier(RouterBridge())
     }
+}
+
+struct BridgeWindowConfigurator: NSViewRepresentable {
+    final class Anchor: NSView {
+        override func viewDidMoveToWindow() {
+            guard let w = window else { return }
+            w.collectionBehavior = [.transient, .ignoresCycle, .stationary, .fullScreenNone]
+            w.isExcludedFromWindowsMenu = true
+            w.level = NSWindow.Level(rawValue: NSWindow.Level.normal.rawValue - 1)
+            w.styleMask.remove(.closable)
+            w.isOpaque = false
+            w.backgroundColor = .clear
+            w.hasShadow = false
+            w.ignoresMouseEvents = true
+            w.alphaValue = 0
+            let x = (NSScreen.screens.map(\.frame.maxX).max() ?? 0) + 20000
+            w.setFrameOrigin(NSPoint(x: x, y: 0))
+        }
+    }
+    func makeNSView(context: Context) -> NSView { Anchor() }
+    func updateNSView(_ v: NSView, context: Context) {}
 }

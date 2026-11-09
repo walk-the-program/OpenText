@@ -1,11 +1,9 @@
 import SwiftUI
 import OpenTextUI
 
-/// HomeView wired to AppModel. Opens on launch; first run also opens setup from here (this view's environment is live).
+/// HomeView wired to AppModel. Shown by code at launch; first run also opens setup from here (this view's environment is live).
 struct HomeHost: View {
     @EnvironmentObject private var model: AppModel
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
     @State private var state = QuickCreateState()
     @State private var recents: [URL] = []
     @State private var setupIncomplete = false
@@ -23,7 +21,6 @@ struct HomeHost: View {
             },
             onFinishSetup: { model.showSetup() })
         .onAppear {
-            model.attach(openWindow, dismissWindow)
             state = QuickCreateState(name: "Untitled", format: model.settings.lastNewFileFormat, folderPath: model.settings.defaultFolder)
             refreshRecents()
             model.homeAppeared()

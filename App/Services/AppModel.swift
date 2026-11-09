@@ -26,12 +26,11 @@ final class AppModel: ObservableObject {
 
     private var openDocument: ((URL) -> Void)?
     private var openNamed: ((String) -> Void)?
-    private var dismissNamed: ((String) -> Void)?
-    /// True when macOS launched us to open files; the home window then closes itself instead of greeting.
-    var launchedWithFiles = false
-    private let launchedAt = Date()
+    /// AppKit delivers application(_:open:) before applicationDidFinishLaunching. An open that arrives first means
+    /// macOS launched us for those files or links, and the home window stays away.
+    private(set) var launchedWithFiles = false
+    private var didFinishLaunching = false
     private var pending: [() -> Void] = []
-    private var lastHandled: (url: URL, at: Date)?
     private var started = false
     private var confirmGate = OneAtATime()
     /// Random per-launch secret shared with the Finder extension through the app-group container.
@@ -44,9 +43,11 @@ final class AppModel: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
-        publishURLToken()
-        HotkeyManager.shared.start { [weak self] in self?.showQuickCreate() }
-        syncHotkeyFromFile()
+        if !SelfTest.enabled {                      // the self-test touches no system state
+            publishURLToken()
+            HotkeyManager.shared.start { [weak self] in self?.showQuickCreate() }
+            syncHotkeyFromFile()
+        }
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.reloadSettingsFromDisk() }
@@ -55,29 +56,42 @@ final class AppModel: ObservableObject {
         pending = []
         flushed.forEach { $0() }
         // Migrate the old UserDefaults flag once. The first-run setup window is opened by HomeHost.
-        if UserDefaults.standard.bool(forKey: "setupShown") {
+        if !SelfTest.enabled, UserDefaults.standard.bool(forKey: "setupShown") {
             UserDefaults.standard.removeObject(forKey: "setupShown")
             if !settings.setupShown { update { $0.setupShown = true } }
         }
     }
 
-    /// Every live window root attaches; the most recent wins.
-    func attach(openDocument: @escaping (URL) -> Void, openNamed: @escaping (String) -> Void,
-                dismissNamed: @escaping (String) -> Void = { _ in }) {
+    /// The permanent bridge window attaches once; it is never closed, so these actions stay live.
+    func attach(openDocument: @escaping (URL) -> Void, openNamed: @escaping (String) -> Void) {
         self.openDocument = openDocument
         self.openNamed = openNamed
-        self.dismissNamed = dismissNamed
         start()
     }
 
-    /// Opens that arrive within seconds of launch mean "launched to open this": the home window steps aside.
-    func noteExternalOpen() {
-        if Date().timeIntervalSince(launchedAt) < 3 { launchedWithFiles = true; dismissNamed?("home") }
+    /// True once the bridge is attached and everything queued before it has run.
+    var isReady: Bool { openDocument != nil && pending.isEmpty }
+
+    /// Any window the user can see (not the invisible bridge, panels or the menu bar item).
+    var hasUserWindow: Bool {
+        NSApp.windows.contains { w in
+            w.isVisible && !(w is NSPanel) && w.canBecomeKey && !(w.identifier?.rawValue.contains("bridge") ?? false)
+        }
     }
 
-    /// Home window greets on launch; first run also opens setup (from the home window's live environment).
+    /// Called from applicationDidFinishLaunching.
+    func finishLaunching() {
+        didFinishLaunching = true
+        if !launchedWithFiles { showHome() }
+    }
+
+    /// An open delivered before launch finished means we were launched to open it.
+    func noteExternalOpen() {
+        if !didFinishLaunching { launchedWithFiles = true }
+    }
+
+    /// First run also opens setup, from the home window.
     func homeAppeared() {
-        if launchedWithFiles { dismissNamed?("home"); return }
         if !settings.setupShown {
             update { $0.setupShown = true }
             showSetup()
@@ -130,22 +144,20 @@ final class AppModel: ObservableObject {
 
     // MARK: windows
 
-    func showQuickCreate() { whenReady { [self] in NSApp.activate(); openNamed?("quick-create") } }
-    func showHome() { whenReady { [self] in NSApp.activate(); openNamed?("home") } }
-    func showSetup() { whenReady { [self] in NSApp.activate(); openNamed?("setup") } }
-    func showNotice(_ n: Notice) { notice = n; whenReady { [self] in NSApp.activate(); openNamed?("notice") } }
+    private func activate() { if !SelfTest.enabled { NSApp.activate() } }
+
+    func showQuickCreate() { whenReady { [self] in activate(); openNamed?("quick-create") } }
+    func showHome() { whenReady { [self] in activate(); openNamed?("home") } }
+    func showSetup() { whenReady { [self] in activate(); openNamed?("setup") } }
+    func showNotice(_ n: Notice) { notice = n; whenReady { [self] in activate(); openNamed?("notice") } }
 
     func openFile(_ url: URL) {
         guard FileRouting.kind(for: url) != .unsupported else { NSSound.beep(); return }
-        NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        if !SelfTest.enabled { NSDocumentController.shared.noteNewRecentDocumentURL(url) }
+        // SwiftUI orders a new (or already open) window for this URL to the front once the app is active.
         whenReady { [self] in
-            NSApp.activate()
+            activate()
             openDocument?(url)
-            // The new window can land behind a closing popover; raise it once SwiftUI has created it.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                NSApp.activate()
-                NSApp.orderedWindows.first { $0.isVisible && $0.canBecomeKey && !($0 is NSPanel) }?.makeKeyAndOrderFront(nil)
-            }
         }
     }
 
@@ -177,12 +189,9 @@ final class AppModel: ObservableObject {
 
     // MARK: URL / file entry point
 
-    /// Handles file URLs and opentext:// URLs from application(_:open:) and .onOpenURL.
+    /// Handles file URLs and opentext:// URLs from application(_:open:).
     /// Signed URLs (valid token from the Finder extension) run; unsigned ones ask first. Paths must stay in $HOME.
     func handle(_ url: URL) {
-        if let last = lastHandled, last.url == url, Date().timeIntervalSince(last.at) < 1 { return }
-        lastHandled = (url, Date())
-        noteExternalOpen()
         if url.isFileURL { openFile(url); return }
         do {
             let route = try RouteGuard.validate(try URLRouter.parse(url))
@@ -198,7 +207,7 @@ final class AppModel: ObservableObject {
 
     private func confirm(title: String, detail: String, run: @escaping () -> Void) {
         guard confirmGate.begin() else { return }       // one unsigned-URL dialog at a time
-        NSApp.activate()
+        activate()
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = detail + "\n\nOnly continue if you asked for this."

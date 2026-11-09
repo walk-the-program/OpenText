@@ -15,7 +15,7 @@ final class HotkeyManager {
     private var listening = false
 
     func start(onPress: @escaping () -> Void) {
-        guard !listening else { return }
+        guard !listening, !SelfTest.enabled else { return }
         listening = true
         KeyboardShortcuts.onKeyUp(for: .quickCreate, action: onPress)
     }

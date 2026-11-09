@@ -18,6 +18,21 @@ public enum ImageOps {
         return ctx.makeImage()
     }
 
+    public static let maxSide = 16_384
+    public static let maxPixels = 100_000_000
+
+    /// Clamps a requested size to `maxSide` per side and `maxPixels` in total (shrinking both sides together
+    /// for the total limit). Never below 1.
+    public static func clampedSize(width: Int, height: Int) -> (width: Int, height: Int) {
+        var w = min(max(width, 1), maxSide), h = min(max(height, 1), maxSide)
+        if w * h > maxPixels {
+            let k = (Double(maxPixels) / (Double(w) * Double(h))).squareRoot()
+            w = max(1, Int(Double(w) * k)); h = max(1, Int(Double(h) * k))
+            while w * h > maxPixels { if w >= h { w -= 1 } else { h -= 1 } }
+        }
+        return (w, h)
+    }
+
     /// Height for `width` keeping the image's aspect ratio (at least 1).
     public static func height(forWidth width: Int, keepingAspectOf size: (width: Int, height: Int)) -> Int {
         guard size.width > 0 else { return 1 }

@@ -193,3 +193,13 @@ import Testing
         #expect(ShortcutFormat.glyphs("ctrl+opt+n") == "⌃⌥N")
     }
 }
+
+@Suite struct ImageResizeClampTests {
+    @Test func clamps() {
+        #expect(ImageOps.clampedSize(width: 800, height: 600) == (800, 600))
+        #expect(ImageOps.clampedSize(width: 0, height: -5) == (1, 1))
+        #expect(ImageOps.clampedSize(width: 20_000, height: 100) == (16_384, 100))
+        let c = ImageOps.clampedSize(width: 16_384, height: 16_384)
+        #expect(c.width * c.height <= ImageOps.maxPixels && c.width == c.height && c.width > 9_000)
+    }
+}

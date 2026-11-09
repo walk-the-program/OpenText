@@ -24,7 +24,7 @@ public struct ImageEditorView: View {
     let commands: DocumentCommands?
     @State private var canvasSize: CGSize = .zero
     @State private var image: CGImage
-    @State private var original: CGImage
+    @State private var display: NSImage                 // rebuilt only when `image` changes, never in body
     @State private var zoom: CGFloat = 1                // 1 = fit
     @State private var crop: CropRect?
     @State private var cropping = false
@@ -41,7 +41,7 @@ public struct ImageEditorView: View {
         self.actions = actions
         self.header = header
         _image = State(initialValue: cg)
-        _original = State(initialValue: cg)
+        _display = State(initialValue: ImageOps.nsImage(from: cg))
     }
 
     private static var blank: CGImage {
@@ -77,7 +77,7 @@ public struct ImageEditorView: View {
                 zoomMenu
                 if cropping { cropButtons }
             } trailing: {
-                Button("Save") { actions.onSave(ImageOps.nsImage(from: image)); edited = false }
+                Button("Save") { actions.onSave(display); edited = false }
                     .buttonStyle(.secondaryAction).keyboardShortcut("s", modifiers: .command).disabled(!edited)
                 Button("Convert", action: actions.onConvert)
                     .buttonStyle(.primaryAction).keyboardShortcut("e", modifiers: [.command, .shift])
@@ -131,7 +131,7 @@ public struct ImageEditorView: View {
             let size = CGSize(width: CGFloat(image.width) * scale, height: CGFloat(image.height) * scale)
             ScrollView([.horizontal, .vertical]) {
                 ZStack {
-                    Image(nsImage: ImageOps.nsImage(from: image)).resizable().interpolation(.high)
+                    Image(nsImage: display).resizable().interpolation(.high)
                         .frame(width: size.width, height: size.height)
                         .overlay(RoundedRectangle(cornerRadius: 0).stroke(Brand.Palette.tileLine, lineWidth: 1))
                     if cropping { cropOverlay(size: size) }
@@ -194,11 +194,13 @@ public struct ImageEditorView: View {
 
     private func apply(_ new: CGImage?) {
         guard let new else { return }
+        let ns = ImageOps.nsImage(from: new)
         image = new
+        display = ns
         edited = true
         zoom = 1
         commands?.markDirty()
-        actions.onChange(ImageOps.nsImage(from: new))
+        actions.onChange(ns)
     }
 }
 
@@ -209,6 +211,7 @@ struct ResizeSheet: View {
     @State private var w: Int
     @State private var h: Int
     @State private var keepAspect = true
+    @State private var limited = false
 
     init(width: Int, height: Int, onApply: @escaping (Int, Int) -> Void, onCancel: @escaping () -> Void) {
         self.width = width; self.height = height; self.onApply = onApply; self.onCancel = onCancel
@@ -219,19 +222,36 @@ struct ResizeSheet: View {
         VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
             Text("Resize").brandHeading(20)
             HStack(spacing: Brand.Spacing.md) {
-                field("Width", value: Binding(get: { w }, set: { w = max(1, $0); if keepAspect { h = ImageOps.height(forWidth: w, keepingAspectOf: (width, height)) } }))
+                field("Width", value: Binding(get: { w }, set: { set(width: $0) }))
                 Text("×").foregroundStyle(Brand.Palette.muted).padding(.top, 16)
-                field("Height", value: Binding(get: { h }, set: { h = max(1, $0); if keepAspect { w = ImageOps.width(forHeight: h, keepingAspectOf: (width, height)) } }))
+                field("Height", value: Binding(get: { h }, set: { set(height: $0) }))
             }
             Toggle("Keep aspect ratio", isOn: $keepAspect).toggleStyle(.checkbox).brandBody()
             Text("Original is \(width) × \(height) px.").brandLabel()
+            if limited { Text("Limited to \(ImageOps.maxSide.formatted()) px per side and \((ImageOps.maxPixels / 1_000_000).formatted()) megapixels.").brandLabel() }
             HStack {
                 Spacer()
                 Button("Cancel", action: onCancel).buttonStyle(.secondaryAction).keyboardShortcut(.cancelAction)
-                Button("Resize") { onApply(w, h) }.buttonStyle(.primaryAction(showsArrow: false)).keyboardShortcut(.defaultAction)
+                Button("Resize") { let c = ImageOps.clampedSize(width: w, height: h); onApply(c.width, c.height) }.buttonStyle(.primaryAction(showsArrow: false)).keyboardShortcut(.defaultAction)
             }
         }
         .padding(Brand.Spacing.xl).frame(width: 360).background(Brand.Palette.surface)
+    }
+
+    private func set(width new: Int) {
+        let nw = max(1, new)
+        commit(nw, keepAspect ? ImageOps.height(forWidth: nw, keepingAspectOf: (width, height)) : h)
+    }
+
+    private func set(height new: Int) {
+        let nh = max(1, new)
+        commit(keepAspect ? ImageOps.width(forHeight: nh, keepingAspectOf: (width, height)) : w, nh)
+    }
+
+    private func commit(_ nw: Int, _ nh: Int) {
+        let c = ImageOps.clampedSize(width: nw, height: nh)
+        limited = c.width != nw || c.height != nh
+        w = c.width; h = c.height
     }
 
     private func field(_ label: String, value: Binding<Int>) -> some View {

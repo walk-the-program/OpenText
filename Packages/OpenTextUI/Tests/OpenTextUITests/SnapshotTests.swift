@@ -222,6 +222,13 @@ enum Fixture {
         }
     }
 
+    @Test func htmlView() {
+        let html = "<html><body style='font-family:Georgia;margin:48px'><h1>Quarterly notes</h1><p>Rendered <b>HTML</b>, not source. <a href='https://example.com'>A link</a>.</p><ul><li>No network</li><li>No scripts</li></ul><img src='https://example.com/x.png' alt=''></body></html>"
+        let header = DocumentHeader(title: "Notes", format: "html", targets: ["txt", "md", "pdf"], leadingInset: 78)
+        let rep = Snap.render(HTMLView(html: html, header: header), name: "html-view", dark: false, size: CGSize(width: 980, height: 560), trafficLights: true, settle: 2.0)
+        #expect(Snap.inkFraction(rep) > 0.0)
+    }
+
     @Test func home() {
         let recents = ["/Users/me/Documents/Lease 2026.pdf", "/Users/me/Desktop/Notes.md", "/Users/me/Downloads/Receipt.png", "/Users/me/Projects/OpenText/README.txt"].map { URL(fileURLWithPath: $0) }
         for dark in [false, true] {

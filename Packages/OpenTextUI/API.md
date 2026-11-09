@@ -63,7 +63,15 @@ Note: `state` is a `Binding` (the built-in shortcut field edits it). Shortcut st
 RichTextActions(onConvert: () -> Void = {}, onSaveAs: (String) -> Void = { _ in })   // onSaveAs gets "txt" or "md"
 RichTextView(attributed: NSAttributedString, actions: RichTextActions = .init(), header: DocumentHeader? = nil)
 ```
-Read-only, selectable viewer for rtf / docx / doc / odt content; same toolbar, paper column and status bar as `TextEditorView`. Tools: Copy Text (plain string to the pasteboard), Save as .txt, Save as .md; Convert is the one primary. Status "N words · Read-only". The document keeps its own fonts and colours, so the page is always white (Aqua-pinned text view), also in dark mode. Never edits or saves.
+Read-only, selectable viewer for rtf / rtfd / docx / doc / odt content; same toolbar, paper column and status bar as `TextEditorView`. Tools: Copy Text (plain string to the pasteboard), Save as .txt, Save as .md; Convert is the one primary. Status "N words · Read-only". The document keeps its own fonts and colours, so the page is always white (Aqua-pinned text view), also in dark mode. Never edits or saves.
+
+```swift
+HTMLView(html: String, actions: RichTextActions = .init(), header: DocumentHeader? = nil)
+HTMLSafety.decode(Data) -> String            // BOM, then <meta charset>, then UTF-8, then Latin-1
+HTMLSafety.shouldAllow(url:isUserClick:initialLoadDone:) -> .allow | .cancel | .openExternally
+HTMLSafety.blockAllRuleJSON
+```
+Renders an HTML file (white page, same chrome and status bar as `RichTextView`) with no way to fetch anything. WKWebView with: non-persistent data store; `allowsContentJavaScript = false` and no script-opened windows; a compiled `WKContentRuleList` (`[{"trigger":{"url-filter":".*"},"action":{"type":"block"}}]`) installed before loading; `loadHTMLString(_, baseURL: nil)`; a navigation delegate that cancels everything except our own initial about:blank load (clicked http/https/mailto links open in the default browser, only on click). If the rule list can't be compiled it falls back to the source as plain text. Copy Text / word count use `HTMLSafety.plainText(fromHTML:)`. The app decodes file bytes with `HTMLSafety.decode`.
 
 ```swift
 public enum UnlockMethod { case password(String), touchID, recoveryKey(String) }

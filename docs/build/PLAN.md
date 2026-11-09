@@ -103,13 +103,13 @@ MCP: `opentext-mcp`, stdio JSON-RPC 2.0, protocol version "2025-06-18", tools `c
 - PDF page operations that don't need UI (reorder, delete, insert document, rotate, add highlight, stamp signature image) live in `OpenTextUI` as `PDFPageOps` with unit tests.
 
 ### App (W3)
-xcodegen `project.yml` → `OpenText.xcodeproj`; targets `OpenText` (app, bundle id `com.walkertracy.opentext`, not sandboxed, signing team QGPDXDQ9SW, Apple Development) and `OpenTextFinder` (Finder Sync extension, sandboxed, embedded). Local package deps: OpenTextKit, OpenTextDesign, OpenTextUI. URL scheme `opentext://new?format=md&dir=<path>`, `opentext://convert?to=pdf&file=<path>`. Exported UTI `com.walkertracy.opentext.locked` for `.otlock`.
+xcodegen `project.yml` → `OpenText.xcodeproj`; targets `OpenText` (app, bundle id `com.walkertracy.opentext`, not sandboxed, signing team 7ZT7J8C9QP (Apple Development cert "Walker Tracy (QGPDXDQ9SW)"; QGPDXDQ9SW is the cert ID, not the team), automatic signing with -allowProvisioningUpdates) and `OpenTextFinder` (Finder Sync extension, sandboxed, embedded). Local package deps: OpenTextKit, OpenTextDesign, OpenTextUI. URL scheme `opentext://new?format=md&dir=<path>`, `opentext://convert?to=pdf&file=<path>`. Exported UTI `com.walkertracy.opentext.locked` for `.otlock`.
 
 ## Task states
 | Task | Owner | Depends on | State |
 |---|---|---|---|
 | T1 Engine, CLI, MCP | W1 | — | running |
 | T2 Design + UI kit + views | W2 | — | running |
-| T3a App shell, project, Finder extension, hotkey, settings, lock flow | W3 | contracts above | running |
+| T3a App shell, project, Finder extension, hotkey, settings, lock flow | W3 | contracts above | accepted (signed build verified with team 7ZT7J8C9QP) |
 | T3b Wire views and engine into the app, full build | W3 | T1, T2 accepted | planned |
 | T4 Integration verification, commit, handoff note | Coordinator | T3b | planned |

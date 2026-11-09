@@ -1,0 +1,555 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		033A49B48E9C91FC6759565D /* Placeholders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B16D5C05EED2D42DDECA196 /* Placeholders.swift */; };
+		3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15719015A5A1FF645C2938B /* AppDelegate.swift */; };
+		3C1262A8ED3DAE2B7B3FA3E2 /* EngineAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8541FE06EE1C9266934005AE /* EngineAdapter.swift */; };
+		3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */; };
+		723D80FB8BE214C845DC2D81 /* SetupActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A47381999D37F179590179F /* SetupActions.swift */; };
+		749AEE684A352318E40980C7 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C893490A1E849A7087434F93 /* AppModel.swift */; };
+		83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */; };
+		9399E640D29FFC4BE2E7147B /* HotkeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 694B0C728DC3C5F0B006918B /* HotkeyManager.swift */; };
+		B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */; };
+		BCEDB7D4577DA2C7456338F1 /* BiometricKeychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */; };
+		C432D992C5193E82A8FF60CD /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */; };
+		E7619E29BF09B5C967A2B1CD /* LockFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100B2CD95EB9A2CC40DED647 /* LockFlow.swift */; };
+		F1A816C25730277617778FE2 /* FinderSync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F54F23BE186BDF7FF408A9 /* FinderSync.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		5357FB8EC595454A90E77616 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5C3F0647A22E147FCAF42D14 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 62425081BC7C0B9F39D50612;
+			remoteInfo = OpenTextFinder;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6B44E228877873F97C0D06C7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		02F54F23BE186BDF7FF408A9 /* FinderSync.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinderSync.swift; sourceTree = "<group>"; };
+		100B2CD95EB9A2CC40DED647 /* LockFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockFlow.swift; sourceTree = "<group>"; };
+		1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenTextApp.swift; sourceTree = "<group>"; };
+		1F02A07C4A27B1776C470A3D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2B16D5C05EED2D42DDECA196 /* Placeholders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Placeholders.swift; sourceTree = "<group>"; };
+		4A47381999D37F179590179F /* SetupActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupActions.swift; sourceTree = "<group>"; };
+		57953B9B9E13D439B5175573 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricKeychain.swift; sourceTree = "<group>"; };
+		694B0C728DC3C5F0B006918B /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
+		8263EFA2D68536A6C153A1CD /* Logic */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logic; path = App/Logic; sourceTree = SOURCE_ROOT; };
+		8454A5816D4B0E31BE473153 /* OpenText.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenText.entitlements; sourceTree = "<group>"; };
+		8541FE06EE1C9266934005AE /* EngineAdapter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EngineAdapter.swift; sourceTree = "<group>"; };
+		A15719015A5A1FF645C2938B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		C58611BFE91CAF8BE0BAFA04 /* OpenText.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenText.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C893490A1E849A7087434F93 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		F1A7518875CF3DBEA18E37D4 /* FinderExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FinderExtension.entitlements; sourceTree = "<group>"; };
+		FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OpenTextFinder.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		7B05609B76EBC0161427D04F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83471FC08775AD72199B5182 /* OpenTextAppLogic in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DA8270D728863BF983D48DA4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */,
+				C432D992C5193E82A8FF60CD /* KeyboardShortcuts in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		11E718D86D7EE1BA42ECD788 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				C893490A1E849A7087434F93 /* AppModel.swift */,
+				61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */,
+				8541FE06EE1C9266934005AE /* EngineAdapter.swift */,
+				694B0C728DC3C5F0B006918B /* HotkeyManager.swift */,
+				100B2CD95EB9A2CC40DED647 /* LockFlow.swift */,
+				4A47381999D37F179590179F /* SetupActions.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		11F0A6981073376A91194090 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				8263EFA2D68536A6C153A1CD /* Logic */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		45E455EC1952DAF7A204F0A3 /* FinderExtension */ = {
+			isa = PBXGroup;
+			children = (
+				F1A7518875CF3DBEA18E37D4 /* FinderExtension.entitlements */,
+				02F54F23BE186BDF7FF408A9 /* FinderSync.swift */,
+				57953B9B9E13D439B5175573 /* Info.plist */,
+			);
+			path = FinderExtension;
+			sourceTree = "<group>";
+		};
+		567E2BC3E4384052300A6878 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2B16D5C05EED2D42DDECA196 /* Placeholders.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		B247DFA2A1C716BC59E7A732 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A15719015A5A1FF645C2938B /* AppDelegate.swift */,
+				1F02A07C4A27B1776C470A3D /* Info.plist */,
+				8454A5816D4B0E31BE473153 /* OpenText.entitlements */,
+				1073E8796AE1D439BF78B5EE /* OpenTextApp.swift */,
+				11E718D86D7EE1BA42ECD788 /* Services */,
+				567E2BC3E4384052300A6878 /* Views */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		BFCB766CBAE6FF17861C240A /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C58611BFE91CAF8BE0BAFA04 /* OpenText.app */,
+				FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D182FDE69C5617D1DE474C55 = {
+			isa = PBXGroup;
+			children = (
+				B247DFA2A1C716BC59E7A732 /* App */,
+				45E455EC1952DAF7A204F0A3 /* FinderExtension */,
+				11F0A6981073376A91194090 /* Packages */,
+				BFCB766CBAE6FF17861C240A /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		62425081BC7C0B9F39D50612 /* OpenTextFinder */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C40136EC119FE247B19FCA27 /* Build configuration list for PBXNativeTarget "OpenTextFinder" */;
+			buildPhases = (
+				B185D041272CE9F385B6582C /* Sources */,
+				7B05609B76EBC0161427D04F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenTextFinder;
+			packageProductDependencies = (
+				0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */,
+			);
+			productName = OpenTextFinder;
+			productReference = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C17E8B94E5CFFAEAFB3975AB /* OpenText */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F8BDCAF5BDB1E955D14D0474 /* Build configuration list for PBXNativeTarget "OpenText" */;
+			buildPhases = (
+				40FB7F09A5AE277B58913154 /* Sources */,
+				DA8270D728863BF983D48DA4 /* Frameworks */,
+				6B44E228877873F97C0D06C7 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				BD3499551029A4C42E831E78 /* PBXTargetDependency */,
+			);
+			name = OpenText;
+			packageProductDependencies = (
+				4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */,
+				E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */,
+			);
+			productName = OpenText;
+			productReference = C58611BFE91CAF8BE0BAFA04 /* OpenText.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5C3F0647A22E147FCAF42D14 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					62425081BC7C0B9F39D50612 = {
+						DevelopmentTeam = QGPDXDQ9SW;
+						ProvisioningStyle = Automatic;
+					};
+					C17E8B94E5CFFAEAFB3975AB = {
+						DevelopmentTeam = QGPDXDQ9SW;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 47F1E2DB0BC79F6C7BC60742 /* Build configuration list for PBXProject "OpenText" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = D182FDE69C5617D1DE474C55;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				19127915D489850881D2D737 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
+				E461D666C958CEAEB000C9BD /* XCLocalSwiftPackageReference "App/Logic" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = BFCB766CBAE6FF17861C240A /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C17E8B94E5CFFAEAFB3975AB /* OpenText */,
+				62425081BC7C0B9F39D50612 /* OpenTextFinder */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		40FB7F09A5AE277B58913154 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */,
+				749AEE684A352318E40980C7 /* AppModel.swift in Sources */,
+				BCEDB7D4577DA2C7456338F1 /* BiometricKeychain.swift in Sources */,
+				3C1262A8ED3DAE2B7B3FA3E2 /* EngineAdapter.swift in Sources */,
+				9399E640D29FFC4BE2E7147B /* HotkeyManager.swift in Sources */,
+				E7619E29BF09B5C967A2B1CD /* LockFlow.swift in Sources */,
+				B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */,
+				033A49B48E9C91FC6759565D /* Placeholders.swift in Sources */,
+				723D80FB8BE214C845DC2D81 /* SetupActions.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B185D041272CE9F385B6582C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F1A816C25730277617778FE2 /* FinderSync.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		BD3499551029A4C42E831E78 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 62425081BC7C0B9F39D50612 /* OpenTextFinder */;
+			targetProxy = 5357FB8EC595454A90E77616 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		35066729A3FFD319E987C8EA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = QGPDXDQ9SW;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		4D9AD820C532D36205B6C388 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/OpenText.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkertracy.opentext;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		8EDBB424D65B16D26C64551B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FinderExtension/FinderExtension.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FinderExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkertracy.opentext.finder;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		98A78FF0C671D7D7716696D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = FinderExtension/FinderExtension.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = FinderExtension/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkertracy.opentext.finder;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		B6824AC0E02DF07BDB79E195 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/OpenText.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.walkertracy.opentext;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		DA0E1AD6C71B022C02FE5D8E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = QGPDXDQ9SW;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		47F1E2DB0BC79F6C7BC60742 /* Build configuration list for PBXProject "OpenText" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				35066729A3FFD319E987C8EA /* Debug */,
+				DA0E1AD6C71B022C02FE5D8E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C40136EC119FE247B19FCA27 /* Build configuration list for PBXNativeTarget "OpenTextFinder" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8EDBB424D65B16D26C64551B /* Debug */,
+				98A78FF0C671D7D7716696D3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F8BDCAF5BDB1E955D14D0474 /* Build configuration list for PBXNativeTarget "OpenText" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B6824AC0E02DF07BDB79E195 /* Debug */,
+				4D9AD820C532D36205B6C388 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		E461D666C958CEAEB000C9BD /* XCLocalSwiftPackageReference "App/Logic" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = App/Logic;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		19127915D489850881D2D737 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/KeyboardShortcuts";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.10.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0F5BA5285AFA181F1E9AA714 /* OpenTextAppLogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextAppLogic;
+		};
+		4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = OpenTextAppLogic;
+		};
+		E71FA0AC570E65F508FDEBD5 /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 19127915D489850881D2D737 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 5C3F0647A22E147FCAF42D14 /* Project object */;
+}

@@ -1,0 +1,132 @@
+name: OpenText
+options:
+  bundleIdPrefix: com.walkertracy
+  deploymentTarget:
+    macOS: "26.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: QGPDXDQ9SW
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+packages:
+  OpenTextAppLogic:
+    path: App/Logic
+  KeyboardShortcuts:
+    url: https://github.com/sindresorhus/KeyboardShortcuts
+    from: 1.10.0
+  # TODO(T3b): enable once the packages exist and `swift build` passes for each, then add the
+  # matching `- package: ...` lines to the OpenText target dependencies below.
+  # OpenTextKit:
+  #   path: Packages/OpenTextKit
+  # OpenTextDesign:
+  #   path: Packages/OpenTextDesign
+  # OpenTextUI:
+  #   path: Packages/OpenTextUI
+targets:
+  OpenText:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+        excludes: ["Logic/**"]
+    dependencies:
+      - package: OpenTextAppLogic
+      - package: KeyboardShortcuts
+      - target: OpenTextFinder
+        embed: true
+      # TODO(T3b): - package: OpenTextKit / OpenTextDesign / OpenTextUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.walkertracy.opentext
+        ENABLE_APP_SANDBOX: NO
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: App/OpenText.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/Info.plist
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: OpenText
+        CFBundleDisplayName: OpenText
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSMinimumSystemVersion: "26.0"
+        LSUIElement: false
+        LSApplicationCategoryType: public.app-category.productivity
+        NSFaceIDUsageDescription: OpenText uses Touch ID to unlock your locked files.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.walkertracy.opentext
+            CFBundleURLSchemes: [opentext]
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Image
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.png, public.jpeg, public.tiff]
+          - CFBundleTypeName: Image (view)
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.heic, com.compuserve.gif, org.webmproject.webp]
+          - CFBundleTypeName: PDF Document
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [com.adobe.pdf]
+          - CFBundleTypeName: Plain Text
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.plain-text]
+          - CFBundleTypeName: Markdown
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [net.daringfireball.markdown]
+          - CFBundleTypeName: OpenText Locked File
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Owner
+            LSItemContentTypes: [com.walkertracy.opentext.locked]
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.walkertracy.opentext.locked
+            UTTypeDescription: OpenText Locked File
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [otlock]
+              public.mime-type: [application/x-opentext-locked]
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: net.daringfireball.markdown
+            UTTypeDescription: Markdown Document
+            UTTypeConformsTo: [public.plain-text]
+            UTTypeTagSpecification:
+              public.filename-extension: [md, markdown]
+              public.mime-type: [text/markdown]
+  OpenTextFinder:
+    type: app-extension
+    platform: macOS
+    sources: [FinderExtension]
+    dependencies:
+      - package: OpenTextAppLogic
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.walkertracy.opentext.finder
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_ENTITLEMENTS: FinderExtension/FinderExtension.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: FinderExtension/Info.plist
+    info:
+      path: FinderExtension/Info.plist
+      properties:
+        CFBundleName: OpenTextFinder
+        CFBundleDisplayName: OpenText Finder
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.FinderSync
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).FinderSync
+schemes:
+  OpenText:
+    build:
+      targets:
+        OpenText: all
+    run:
+      config: Debug

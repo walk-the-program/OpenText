@@ -2,7 +2,7 @@ import Foundation
 import OpenTextKit
 
 public enum FileKind: Equatable, Sendable {
-    case text, markdown, pdf, image, locked, unsupported
+    case text, markdown, pdf, image, richText, locked, unsupported
 }
 
 public enum FileRouting {
@@ -13,8 +13,12 @@ public enum FileRouting {
         if f == .md { return .markdown }
         if DocFormat.plainTextFormats.contains(f) { return .text }
         if DocFormat.imageFormats.contains(f) { return .image }
+        if richTextFormats.contains(f) { return .richText }
         return .unsupported
     }
+
+    /// Opened read-only in the rich text viewer.
+    public static let richTextFormats: Set<DocFormat> = [.rtf, .docx, .doc, .odt, .html]
 
     /// Targets offered in the Finder right-click submenu (png/jpg/pdf/md/txt only).
     public static let finderMenuFormats = ["pdf", "md", "txt", "png", "jpg"]

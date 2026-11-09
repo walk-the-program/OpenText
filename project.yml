@@ -83,6 +83,14 @@ targets:
             CFBundleTypeRole: Editor
             LSHandlerRank: Alternate
             LSItemContentTypes: [net.daringfireball.markdown]
+          - CFBundleTypeName: Rich Text
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [public.rtf]
+          - CFBundleTypeName: Word / Office Document (view)
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes: [org.openxmlformats.wordprocessingml.document, com.microsoft.word.doc, org.oasis-open.opendocument.text]
           - CFBundleTypeName: OpenText Locked File
             CFBundleTypeRole: Editor
             LSHandlerRank: Owner

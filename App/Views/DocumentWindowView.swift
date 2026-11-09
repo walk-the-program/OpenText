@@ -32,6 +32,12 @@ struct DocumentWindowView: View {
                        targets: session.targets, leadingInset: 78) { session.switchFormat(to: $0) }
     }
 
+    /// Read-only viewer: the chip converts next to the original instead of swapping (and trashing) the file.
+    private var richHeader: DocumentHeader {
+        DocumentHeader(title: (session.title as NSString).deletingPathExtension, format: session.format,
+                       targets: session.targets, leadingInset: 78) { session.convert(to: $0) }
+    }
+
     var body: some View {
         Group {
             switch session.content {
@@ -54,6 +60,12 @@ struct DocumentWindowView: View {
                                                             loadSignature: SignatureStore.load,
                                                             saveSignature: SignatureStore.save),
                                   header: header, commands: session.commands)
+                }
+            case .richText:
+                if let rich = session.rich {
+                    RichTextView(attributed: rich,
+                                 actions: RichTextActions(onConvert: session.requestConvert, onSaveAs: { session.convert(to: $0) }),
+                                 header: richHeader)
                 }
             case .pdfPassword:
                 PDFPasswordView(fileName: session.title, errorMessage: session.pdfPasswordError) { session.unlockPDF(password: $0) }

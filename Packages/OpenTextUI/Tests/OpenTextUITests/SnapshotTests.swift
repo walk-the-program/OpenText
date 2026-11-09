@@ -201,6 +201,27 @@ enum Fixture {
         }
     }
 
+    @Test func richText() {
+        let doc = NSMutableAttributedString()
+        let body = NSFont.systemFont(ofSize: 13)
+        doc.append(NSAttributedString(string: "Lease Summary\n", attributes: [.font: NSFont.boldSystemFont(ofSize: 18)]))
+        let para = NSMutableAttributedString(string: "Rent is due on the first of each month. A late charge applies after the fifth, so pay ", attributes: [.font: body])
+        para.append(NSAttributedString(string: "early", attributes: [.font: body, .foregroundColor: NSColor.systemRed]))
+        para.append(NSAttributedString(string: ".\n\n", attributes: [.font: body]))
+        doc.append(para)
+        for item in ["Deposit: $2,400", "Term: 12 months", "Pets: none"] {
+            doc.append(NSAttributedString(string: "\u{2022}  \(item)\n", attributes: [.font: body]))
+        }
+        // Round-trip through RTF so the sample is what the app would load from a real file.
+        let rtf = try! doc.data(from: NSRange(location: 0, length: doc.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf])
+        let loaded = try! NSAttributedString(data: rtf, options: [.documentType: NSAttributedString.DocumentType.rtf], documentAttributes: nil)
+        for dark in [false, true] {
+            let header = DocumentHeader(title: "Lease Summary", format: "rtf", targets: ["txt", "md", "docx", "pdf"], leadingInset: 78)
+            let rep = Snap.render(RichTextView(attributed: loaded, header: header), name: "rich-text", dark: dark, size: CGSize(width: 980, height: 560), trafficLights: true)
+            #expect(Snap.inkFraction(rep) > 0.02)
+        }
+    }
+
     @Test func home() {
         let recents = ["/Users/me/Documents/Lease 2026.pdf", "/Users/me/Desktop/Notes.md", "/Users/me/Downloads/Receipt.png", "/Users/me/Projects/OpenText/README.txt"].map { URL(fileURLWithPath: $0) }
         for dark in [false, true] {

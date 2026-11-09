@@ -60,6 +60,12 @@ SetupView(state: Binding<SetupState>, actions: SetupActions = .init(), shortcutR
 Note: `state` is a `Binding` (the built-in shortcut field edits it). Shortcut strings use the settings.json spelling ("ctrl+opt+shift+cmd+<key>").
 
 ```swift
+RichTextActions(onConvert: () -> Void = {}, onSaveAs: (String) -> Void = { _ in })   // onSaveAs gets "txt" or "md"
+RichTextView(attributed: NSAttributedString, actions: RichTextActions = .init(), header: DocumentHeader? = nil)
+```
+Read-only, selectable viewer for rtf / docx / doc / odt content; same toolbar, paper column and status bar as `TextEditorView`. Tools: Copy Text (plain string to the pasteboard), Save as .txt, Save as .md; Convert is the one primary. Status "N words · Read-only". The document keeps its own fonts and colours, so the page is always white (Aqua-pinned text view), also in dark mode. Never edits or saves.
+
+```swift
 public enum UnlockMethod { case password(String), touchID, recoveryKey(String) }
 LockedFileView(fileName: String, canUseTouchID: Bool, errorMessage: String? = nil, onUnlock: (UnlockMethod) -> Void)
 ConvertSheet(sourceFormat: String, targets: [String], onConvert: (String) -> Void, onCancel: () -> Void = {})

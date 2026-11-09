@@ -108,8 +108,8 @@ xcodegen `project.yml` → `OpenText.xcodeproj`; targets `OpenText` (app, bundle
 ## Task states
 | Task | Owner | Depends on | State |
 |---|---|---|---|
-| T1 Engine, CLI, MCP | W1 | — | running |
-| T2 Design + UI kit + views | W2 | — | running |
+| T1 Engine, CLI, MCP | W1 | — | accepted (26 tests pass, crypto reviewed) |
+| T2 Design + UI kit + views | W2 | — | accepted (32 tests pass, snapshots reviewed) |
 | T3a App shell, project, Finder extension, hotkey, settings, lock flow | W3 | contracts above | accepted (signed build verified with team 7ZT7J8C9QP) |
-| T3b Wire views and engine into the app, full build | W3 | T1, T2 accepted | planned |
+| T3b Wire views and engine into the app, full build | W3 | T1, T2 accepted | running |
 | T4 Integration verification, commit, handoff note | Coordinator | T3b | planned |

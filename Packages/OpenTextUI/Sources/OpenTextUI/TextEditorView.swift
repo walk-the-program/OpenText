@@ -1,0 +1,256 @@
+import SwiftUI
+import AppKit
+import OpenTextDesign
+
+public struct TextEditorActions {
+    public var onConvert: () -> Void
+    public var onLock: () -> Void
+    /// .txt only: flip between Inter and SF Mono (D-016). The app stores the choice and passes `monospace` back.
+    public var onToggleMonospace: () -> Void
+
+    public init(onConvert: @escaping () -> Void = {}, onLock: @escaping () -> Void = {}, onToggleMonospace: @escaping () -> Void = {}) {
+        self.onConvert = onConvert
+        self.onLock = onLock
+        self.onToggleMonospace = onToggleMonospace
+    }
+}
+
+/// Plain-text editor. Never rich text. For Markdown files: syntax characters muted, Edit/Preview, formatting tools.
+/// The tool row fades out shortly after typing starts and returns when the mouse moves.
+public struct TextEditorView: View {
+    @Binding var text: String
+    let isMarkdown: Bool
+    let monospace: Bool
+    let isSaved: Bool
+    let actions: TextEditorActions
+    let header: DocumentHeader?
+
+    @State private var mode: Mode = .edit
+    @State private var toolbarOpacity: Double = 1
+    @State private var fadeTask: Task<Void, Never>?
+    @State private var controller = TextEditorController()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    enum Mode: String, CaseIterable { case edit = "Edit", preview = "Preview" }
+
+    /// Snapshot/testing hooks (internal): start with the tool row already faded, or in Preview.
+    func startingFaded() -> Self { var c = self; c._toolbarOpacity = State(initialValue: 0); return c }
+    func startingInPreview() -> Self { var c = self; c._mode = State(initialValue: .preview); return c }
+
+    /// Seconds between the first keystroke and the toolbar starting to fade.
+    static let fadeDelay: Duration = .milliseconds(400)
+
+    public init(text: Binding<String>, isMarkdown: Bool, monospace: Bool = false, isSaved: Bool = true,
+                actions: TextEditorActions = .init(), header: DocumentHeader? = nil) {
+        _text = text
+        self.isMarkdown = isMarkdown
+        self.monospace = monospace
+        self.isSaved = isSaved
+        self.actions = actions
+        self.header = header
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            ToolbarRow(header: header, toolsOpacity: toolbarOpacity) {
+                if isMarkdown {
+                    ToolButton(title: "Heading", shortcut: .init("1", modifiers: [.command, .option])) { controller.perform(.heading) }.disabled(mode == .preview)
+                    ToolButton(title: "Bold", shortcut: .init("b", modifiers: .command)) { controller.perform(.bold) }.disabled(mode == .preview)
+                    ToolButton(title: "List", shortcut: .init("l", modifiers: [.command, .shift])) { controller.perform(.list) }.disabled(mode == .preview)
+                    ToolButton(title: "Link", shortcut: .init("k", modifiers: .command)) { controller.perform(.link) }.disabled(mode == .preview)
+                } else {
+                    ToolButton(title: monospace ? "Inter" : "Mono", shortcut: .init("m", modifiers: [.command, .shift])) { actions.onToggleMonospace() }
+                }
+            } trailing: {
+                if isMarkdown {
+                    BrandSegmented(options: Mode.allCases.map(\.rawValue), selection: Binding(
+                        get: { mode.rawValue }, set: { mode = Mode(rawValue: $0) ?? .edit }))
+                        .keyboardShortcut("p", modifiers: [.command, .shift])
+                }
+                ToolButton(title: "Lock", shortcut: .init("l", modifiers: [.command, .option])) { actions.onLock() }
+                Button("Convert", action: actions.onConvert)
+                    .buttonStyle(.primaryAction).keyboardShortcut("e", modifiers: [.command, .shift])
+            }
+            ZStack {
+                Brand.Palette.canvas
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    ZStack {
+                        if isMarkdown && mode == .preview {
+                            ScrollView { MarkdownPreview(markdown: text).padding(.horizontal, 88).padding(.vertical, 44) }
+                        } else {
+                            PlainTextView(text: $text, isMarkdown: isMarkdown, monospace: monospace, controller: controller, onTyping: typed)
+                                .padding(.horizontal, 80).padding(.vertical, 8)
+                        }
+                    }
+                    .frame(maxWidth: 860, maxHeight: .infinity)
+                    .background(Brand.Palette.surface)
+                    .overlay(alignment: .leading) { Rectangle().fill(Brand.Palette.line).frame(width: 1) }
+                    .overlay(alignment: .trailing) { Rectangle().fill(Brand.Palette.line).frame(width: 1) }
+                    Spacer(minLength: 0)
+                }
+            }
+            StatusBar(content: { Text("\(WordCounter.label(text)) · \(isSaved ? "Saved" : "Edited")") }, alignment: .trailing)
+        }
+        .onContinuousHover { phase in if case .active = phase { revealToolbar() } }
+        .onDisappear { fadeTask?.cancel() }
+    }
+
+    private func typed() {
+        fadeTask?.cancel()
+        fadeTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.fadeDelay)
+            guard !Task.isCancelled else { return }
+            withAnimation(reduceMotion ? nil : Brand.Motion.slow) { toolbarOpacity = 0 }
+        }
+    }
+
+    private func revealToolbar() {
+        fadeTask?.cancel()
+        guard toolbarOpacity < 1 else { return }
+        withAnimation(reduceMotion ? nil : Brand.Motion.standard) { toolbarOpacity = 1 }
+    }
+}
+
+/// Segmented control: selected segment is `Palette.primary`, others flat canvas.
+struct BrandSegmented: View {
+    let options: [String]
+    @Binding var selection: String
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(options, id: \.self) { option in
+                let on = option == selection
+                Button { selection = option } label: {
+                    Text(option).font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
+                        .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.ink)
+                        .padding(.horizontal, 12).frame(height: Brand.Size.control)
+                        .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
+                            .fill(on ? Brand.Palette.primary : Brand.Palette.canvas))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+    }
+}
+
+// MARK: - NSTextView wrapper
+
+@MainActor final class TextEditorController {
+    weak var textView: NSTextView?
+
+    func perform(_ command: MarkdownCommand) {
+        guard let tv = textView else { return }
+        let edit = MarkdownFormatting.edit(command, in: tv.string, selection: tv.selectedRange())
+        guard tv.shouldChangeText(in: edit.range, replacementString: edit.replacement) else { return }
+        tv.textStorage?.replaceCharacters(in: edit.range, with: edit.replacement)
+        tv.didChangeText()
+        tv.setSelectedRange(edit.selection)
+        tv.window?.makeFirstResponder(tv)
+    }
+}
+
+struct PlainTextView: NSViewRepresentable {
+    @Binding var text: String
+    let isMarkdown: Bool
+    let monospace: Bool
+    let controller: TextEditorController
+    var onTyping: () -> Void
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSTextView.scrollableTextView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.autohidesScrollers = true
+        let tv = scroll.documentView as! NSTextView
+        tv.isRichText = false
+        tv.importsGraphics = false
+        tv.allowsUndo = true
+        tv.drawsBackground = false
+        tv.isAutomaticQuoteSubstitutionEnabled = false
+        tv.isAutomaticDashSubstitutionEnabled = false
+        tv.isAutomaticTextReplacementEnabled = false
+        tv.textContainerInset = NSSize(width: 0, height: 36)
+        tv.insertionPointColor = Brand.NSPalette.ink
+        tv.delegate = context.coordinator
+        tv.setAccessibilityLabel("Document text")
+        controller.textView = tv
+        tv.string = text
+        context.coordinator.style(tv, parent: self)
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        let tv = scroll.documentView as! NSTextView
+        context.coordinator.parent = self
+        controller.textView = tv
+        if tv.string != text { tv.string = text }
+        context.coordinator.style(tv, parent: self)
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: PlainTextView
+        private var lastStyleKey = ""
+        init(_ parent: PlainTextView) { self.parent = parent }
+
+        func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
+            parent.onTyping()
+            return true
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let tv = notification.object as? NSTextView else { return }
+            parent.text = tv.string
+            style(tv, parent: parent, force: true)
+        }
+
+        func style(_ tv: NSTextView, parent: PlainTextView, force: Bool = false) {
+            let key = "\(parent.isMarkdown)|\(parent.monospace)|\(tv.string.count)|\(tv.string.hashValue)"
+            guard force || key != lastStyleKey, let storage = tv.textStorage else { return }
+            lastStyleKey = key
+            PlainTextStyler.apply(to: storage, isMarkdown: parent.isMarkdown, monospace: parent.monospace)
+            tv.typingAttributes = PlainTextStyler.baseAttributes(monospace: parent.monospace)
+        }
+    }
+}
+
+/// Paints text storage attributes. Characters are never changed; only fonts and colours.
+enum PlainTextStyler {
+    static let size: CGFloat = 15
+
+    static func baseFont(monospace: Bool) -> NSFont {
+        monospace ? NSFont.monospacedSystemFont(ofSize: 14, weight: .regular) : Brand.Fonts.nsBody(size)
+    }
+
+    static func baseAttributes(monospace: Bool) -> [NSAttributedString.Key: Any] {
+        let style = NSMutableParagraphStyle()
+        style.lineSpacing = monospace ? 5 : 8
+        return [.font: baseFont(monospace: monospace), .foregroundColor: Brand.NSPalette.ink, .paragraphStyle: style]
+    }
+
+    static func apply(to storage: NSTextStorage, isMarkdown: Bool, monospace: Bool) {
+        let full = NSRange(location: 0, length: storage.length)
+        storage.beginEditing()
+        storage.setAttributes(baseAttributes(monospace: monospace), range: full)
+        if isMarkdown {
+            let ns = storage.string as NSString
+            for span in MarkdownSyntaxHighlighter.spans(in: storage.string) where NSMaxRange(span.range) <= storage.length {
+                switch span.kind {
+                case .syntax: storage.addAttribute(.foregroundColor, value: Brand.NSPalette.muted, range: span.range)
+                case let .heading(level):
+                    let line = ns.lineRange(for: NSRange(location: span.range.location, length: 0))
+                    let end = min(NSMaxRange(span.range), NSMaxRange(line))
+                    let range = NSRange(location: line.location, length: end - line.location)
+                    let pt: CGFloat = level == 1 ? 26 : level == 2 ? 20 : 17
+                    storage.addAttribute(.font, value: Brand.Fonts.nsHeading(pt), range: range)
+                case .bold: storage.addAttribute(.font, value: Brand.Fonts.nsBody(size, weight: .semibold), range: span.range)
+                case .italic: storage.addAttribute(.obliqueness, value: 0.18, range: span.range)
+                case .code: storage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13.5, weight: .regular), range: span.range)
+                }
+            }
+        }
+        storage.endEditing()
+    }
+}

@@ -1,0 +1,88 @@
+import SwiftUI
+import OpenTextDesign
+
+/// Title area content for a document window: name + format chip. Pass to a view's `header:` and hide the
+/// native title bar, or leave nil when the window shows its own title.
+public struct DocumentHeader {
+    public var title: String
+    public var format: String
+    public var targets: [String]
+    public var onSwitchFormat: (String) -> Void
+    /// Space kept free at the leading edge for the traffic-light buttons when the title bar is hidden.
+    public var leadingInset: CGFloat
+
+    public init(title: String, format: String, targets: [String] = [], leadingInset: CGFloat = 0,
+                onSwitchFormat: @escaping (String) -> Void = { _ in }) {
+        self.title = title
+        self.format = format
+        self.targets = targets
+        self.leadingInset = leadingInset
+        self.onSwitchFormat = onSwitchFormat
+    }
+}
+
+/// One toolbar row: [header] | tools ... trailing. 48pt high, paper fill, hairline below.
+struct ToolbarRow<Tools: View, Trailing: View>: View {
+    var header: DocumentHeader?
+    /// Opacity of tools + trailing actions (the title and chip stay). Used by the fading editor toolbar.
+    var toolsOpacity: Double = 1
+    @ViewBuilder var tools: Tools
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: Brand.Spacing.sm) {
+            if let header {
+                Color.clear.frame(width: header.leadingInset, height: 1)
+                Text(header.title).brandHeading(18).lineLimit(1)
+                FormatChip(format: header.format, targets: header.targets, onSelect: header.onSwitchFormat)
+                Rectangle().fill(Brand.Palette.line).frame(width: 1, height: 20).padding(.horizontal, 6)
+            }
+            HStack(spacing: Brand.Spacing.sm) {
+                tools
+                Spacer(minLength: Brand.Spacing.md)
+                trailing
+            }
+            .opacity(toolsOpacity)
+            .allowsHitTesting(toolsOpacity > 0.5)
+            .accessibilityHidden(toolsOpacity < 0.5)
+        }
+        .padding(.horizontal, 14)
+        .frame(height: Brand.Size.toolbarHeight)
+        .background(Brand.Palette.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(Brand.Palette.line).frame(height: 1) }
+    }
+}
+
+struct StatusBar<Content: View>: View {
+    @ViewBuilder var content: Content
+    var alignment: Alignment = .center
+    var body: some View {
+        content
+            .font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
+            .padding(.horizontal, 14)
+            .frame(maxWidth: .infinity, alignment: alignment)
+            .frame(height: Brand.Size.statusBarHeight)
+            .background(Brand.Palette.surface)
+            .overlay(alignment: .top) { Rectangle().fill(Brand.Palette.line).frame(height: 1) }
+    }
+}
+
+/// Text tool button with an optional keyboard shortcut.
+struct ToolButton: View {
+    var title: String
+    var shortcut: KeyboardShortcut? = nil
+    var isActive = false
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) { Text(title) }
+            .buttonStyle(.toolbarItem(isActive: isActive))
+            .optionalShortcut(shortcut)
+            .accessibilityLabel(title)
+    }
+}
+
+extension View {
+    @ViewBuilder func optionalShortcut(_ s: KeyboardShortcut?) -> some View {
+        if let s { keyboardShortcut(s) } else { self }
+    }
+}

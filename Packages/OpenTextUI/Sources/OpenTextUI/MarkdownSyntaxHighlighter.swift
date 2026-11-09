@@ -18,21 +18,45 @@ public enum MarkdownSyntaxHighlighter {
         public init(_ range: NSRange, _ kind: Kind) { self.range = range; self.kind = kind }
     }
 
-    public static func spans(in text: String) -> [Span] {
-        var spans: [Span] = []
+    /// Documents longer than this (UTF-16 units, about 1 MB) get no highlighting.
+    public static let maxDocumentLength = 1_048_576
+    /// Lines longer than this are left as plain body text.
+    public static let maxLineLength = 5_000
+
+    public static func spans(in text: String) -> [Span] { spans(in: text, range: nil) }
+
+    /// Spans for whole lines intersecting `range` (nil = whole text). Fence state at the start of the range
+    /// is found with a cheap prefix scan, so a paragraph can be restyled without a full pass.
+    /// `lineLimit` is exposed so tests can exercise the regexes on very long lines.
+    public static func spans(in text: String, range: NSRange?, lineLimit: Int = maxLineLength) -> [Span] {
         let ns = text as NSString
+        guard ns.length <= maxDocumentLength else { return [] }
+        var spans: [Span] = []
+        let target = range.map { ns.lineRange(for: $0) } ?? NSRange(location: 0, length: ns.length)
         var inFence = false
-        ns.enumerateSubstrings(in: NSRange(location: 0, length: ns.length), options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
-            let line = ns.substring(with: lineRange)
-            if line.hasPrefix("```") || line.hasPrefix("~~~") {
+        if target.location > 0 {
+            ns.enumerateSubstrings(in: NSRange(location: 0, length: target.location), options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
+                if isFence(ns, lineRange) { inFence.toggle() }
+            }
+        }
+        ns.enumerateSubstrings(in: target, options: [.byLines, .substringNotRequired]) { _, lineRange, _, _ in
+            if isFence(ns, lineRange) {
                 inFence.toggle()
                 spans.append(Span(lineRange, .syntax))
                 return
             }
+            if lineRange.length > lineLimit { return }
             if inFence { spans.append(Span(lineRange, .code)); return }
-            spans.append(contentsOf: lineSpans(line, offset: lineRange.location))
+            spans.append(contentsOf: lineSpans(ns.substring(with: lineRange), offset: lineRange.location))
         }
         return spans
+    }
+
+    /// True when the line starts a code fence. Cheap: looks at three characters only.
+    static func isFence(_ ns: NSString, _ lineRange: NSRange) -> Bool {
+        guard lineRange.length >= 3 else { return false }
+        let head = ns.substring(with: NSRange(location: lineRange.location, length: 3))
+        return head == "```" || head == "~~~"
     }
 
     // MARK: Lines
@@ -41,9 +65,9 @@ public enum MarkdownSyntaxHighlighter {
     private static let listRegex = try! NSRegularExpression(pattern: #"^([ \t]*)([-*+]|\d{1,9}[.)])([ \t]+)"#)
     private static let quoteRegex = try! NSRegularExpression(pattern: #"^([ \t]*>)+"#)
     private static let ruleRegex = try! NSRegularExpression(pattern: #"^[ \t]*([-*_])([ \t]*\1){2,}[ \t]*$"#)
-    private static let codeRegex = try! NSRegularExpression(pattern: #"(`+)(.+?)\1"#)
-    private static let boldRegex = try! NSRegularExpression(pattern: #"(\*\*|__)(?=\S)(.+?)(?<=\S)\1"#)
-    private static let italicRegex = try! NSRegularExpression(pattern: #"(?<![*_\w])([*_])(?=[^\s*_])(.+?)(?<=[^\s*_])\1(?![*_\w])"#)
+    private static let codeRegex = try! NSRegularExpression(pattern: #"(`+)(.{1,300}?)\1"#)
+    private static let boldRegex = try! NSRegularExpression(pattern: #"(\*\*|__)(?=\S)(.{1,300}?)(?<=\S)\1"#)
+    private static let italicRegex = try! NSRegularExpression(pattern: #"(?<![*_\w])([*_])(?=[^\s*_])(.{1,300}?)(?<=[^\s*_])\1(?![*_\w])"#)
     private static let linkRegex = try! NSRegularExpression(pattern: #"!?\[([^\]\n]*)\]\(([^)\n]*)\)"#)
 
     private static func lineSpans(_ line: String, offset: Int) -> [Span] {

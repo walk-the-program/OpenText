@@ -30,6 +30,7 @@ public struct TextEditorView: View {
     @State private var toolbarOpacity: Double = 1
     @State private var fadeTask: Task<Void, Never>?
     @State private var controller = TextEditorController()
+    @State private var wordLabel: String
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     enum Mode: String, CaseIterable { case edit = "Edit", preview = "Preview" }
@@ -45,6 +46,7 @@ public struct TextEditorView: View {
                 actions: TextEditorActions = .init(), header: DocumentHeader? = nil, commands: DocumentCommands? = nil) {
         self.commands = commands
         _text = text
+        _wordLabel = State(initialValue: WordCounter.label(text.wrappedValue))
         self.isMarkdown = isMarkdown
         self.monospace = monospace
         self.isSaved = isSaved
@@ -113,12 +115,18 @@ public struct TextEditorView: View {
                     Spacer(minLength: 0)
                 }
             }
-            StatusBar(content: { Text("\(WordCounter.label(text)) · \(isSaved ? "Saved" : "Edited")") }, alignment: .trailing)
+            StatusBar(content: { Text("\(wordLabel) · \(isSaved ? "Saved" : "Edited")") }, alignment: .trailing)
         }
         .onContinuousHover { phase in if case .active = phase { revealToolbar() } }
         .onAppear { registerCommands() }
         .onChange(of: mode) { _, _ in registerCommands() }
         .onChange(of: text) { _, _ in commands?.markDirty() }
+        .task(id: text) {
+            // Word count is a full scan; wait for typing to pause.
+            try? await Task.sleep(for: .milliseconds(250))
+            guard !Task.isCancelled else { return }
+            wordLabel = WordCounter.label(text)
+        }
         .onDisappear { fadeTask?.cancel(); commands?.unregister() }
     }
 
@@ -206,7 +214,8 @@ struct PlainTextView: NSViewRepresentable {
         tv.setAccessibilityLabel("Document text")
         controller.textView = tv
         tv.string = text
-        context.coordinator.style(tv, parent: self)
+        tv.textStorage?.delegate = context.coordinator
+        context.coordinator.style(tv, parent: self, force: true)
         return scroll
     }
 
@@ -220,24 +229,42 @@ struct PlainTextView: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
-    @MainActor final class Coordinator: NSObject, NSTextViewDelegate {
+    @MainActor final class Coordinator: NSObject, NSTextViewDelegate, NSTextStorageDelegate {
         var parent: PlainTextView
         private var lastStyleKey = ""
+        private var fenceTouched = false
         init(_ parent: PlainTextView) { self.parent = parent }
 
         func textView(_ textView: NSTextView, shouldChangeTextIn affectedCharRange: NSRange, replacementString: String?) -> Bool {
             parent.onTyping()
+            // A code fence leaving or entering the text changes how later lines read.
+            let ns = textView.string as NSString
+            fenceTouched = parent.isMarkdown
+                && (PlainTextStyler.containsFence(ns, in: ns.paragraphRange(for: affectedCharRange))
+                    || (replacementString?.contains("```") ?? false) || (replacementString?.contains("~~~") ?? false))
             return true
         }
 
         func textDidChange(_ notification: Notification) {
             guard let tv = notification.object as? NSTextView else { return }
             parent.text = tv.string
-            style(tv, parent: parent, force: true)
         }
 
+        /// Restyles only the paragraphs an edit touched.
+        nonisolated func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions,
+                                     range editedRange: NSRange, changeInLength delta: Int) {
+            guard editedMask.contains(.editedCharacters) else { return }
+            nonisolated(unsafe) let textStorage = textStorage
+            MainActor.assumeIsolated {
+                let range = PlainTextStyler.restyleRange(in: textStorage.string as NSString, edited: editedRange, fenceTouched: fenceTouched)
+                fenceTouched = false
+                PlainTextStyler.apply(to: textStorage, range: range, isMarkdown: parent.isMarkdown, monospace: parent.monospace)
+            }
+        }
+
+        /// Full restyle, only when the markdown/monospace mode changed (or `force`).
         func style(_ tv: NSTextView, parent: PlainTextView, force: Bool = false) {
-            let key = "\(parent.isMarkdown)|\(parent.monospace)|\(tv.string.count)|\(tv.string.hashValue)"
+            let key = "\(parent.isMarkdown)|\(parent.monospace)"
             guard force || key != lastStyleKey, let storage = tv.textStorage else { return }
             lastStyleKey = key
             PlainTextStyler.apply(to: storage, isMarkdown: parent.isMarkdown, monospace: parent.monospace)
@@ -260,27 +287,48 @@ enum PlainTextStyler {
         return [.font: baseFont(monospace: monospace), .foregroundColor: Brand.NSPalette.ink, .paragraphStyle: style]
     }
 
+    /// Full restyle (load, md/txt or monospace switch).
     static func apply(to storage: NSTextStorage, isMarkdown: Bool, monospace: Bool) {
-        let full = NSRange(location: 0, length: storage.length)
         storage.beginEditing()
-        storage.setAttributes(baseAttributes(monospace: monospace), range: full)
-        if isMarkdown {
-            let ns = storage.string as NSString
-            for span in MarkdownSyntaxHighlighter.spans(in: storage.string) where NSMaxRange(span.range) <= storage.length {
-                switch span.kind {
-                case .syntax: storage.addAttribute(.foregroundColor, value: Brand.NSPalette.muted, range: span.range)
-                case let .heading(level):
-                    let line = ns.lineRange(for: NSRange(location: span.range.location, length: 0))
-                    let end = min(NSMaxRange(span.range), NSMaxRange(line))
-                    let range = NSRange(location: line.location, length: end - line.location)
-                    let pt: CGFloat = level == 1 ? 26 : level == 2 ? 20 : 17
-                    storage.addAttribute(.font, value: Brand.Fonts.nsHeading(pt), range: range)
-                case .bold: storage.addAttribute(.font, value: Brand.Fonts.nsBody(size, weight: .semibold), range: span.range)
-                case .italic: storage.addAttribute(.obliqueness, value: 0.18, range: span.range)
-                case .code: storage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13.5, weight: .regular), range: span.range)
-                }
+        apply(to: storage, range: NSRange(location: 0, length: storage.length), isMarkdown: isMarkdown, monospace: monospace)
+        storage.endEditing()
+    }
+
+    /// The range an edit must restyle: whole paragraphs around `edited`; to the end of the text when
+    /// a code fence was involved (fences change how every later line reads).
+    static func restyleRange(in string: NSString, edited: NSRange, fenceTouched: Bool) -> NSRange {
+        let clamped = NSIntersectionRange(edited, NSRange(location: 0, length: string.length))
+        var r = string.paragraphRange(for: NSRange(location: min(edited.location, string.length), length: clamped.length))
+        if fenceTouched || containsFence(string, in: r) { r.length = string.length - r.location }
+        return r
+    }
+
+    static func containsFence(_ string: NSString, in range: NSRange) -> Bool {
+        var found = false
+        string.enumerateSubstrings(in: range, options: [.byLines, .substringNotRequired]) { _, line, _, stop in
+            if MarkdownSyntaxHighlighter.isFence(string, line) { found = true; stop.pointee = true }
+        }
+        return found
+    }
+
+    /// Restyles `range` only (caller supplies begin/endEditing). Over-limit documents and lines stay plain body.
+    static func apply(to storage: NSTextStorage, range: NSRange, isMarkdown: Bool, monospace: Bool) {
+        storage.setAttributes(baseAttributes(monospace: monospace), range: range)
+        guard isMarkdown, storage.length <= MarkdownSyntaxHighlighter.maxDocumentLength else { return }
+        let ns = storage.string as NSString
+        for span in MarkdownSyntaxHighlighter.spans(in: storage.string, range: range) where NSMaxRange(span.range) <= storage.length {
+            switch span.kind {
+            case .syntax: storage.addAttribute(.foregroundColor, value: Brand.NSPalette.muted, range: span.range)
+            case let .heading(level):
+                let line = ns.lineRange(for: NSRange(location: span.range.location, length: 0))
+                let end = min(NSMaxRange(span.range), NSMaxRange(line))
+                let range = NSRange(location: line.location, length: end - line.location)
+                let pt: CGFloat = level == 1 ? 26 : level == 2 ? 20 : 17
+                storage.addAttribute(.font, value: Brand.Fonts.nsHeading(pt), range: range)
+            case .bold: storage.addAttribute(.font, value: Brand.Fonts.nsBody(size, weight: .semibold), range: span.range)
+            case .italic: storage.addAttribute(.obliqueness, value: 0.18, range: span.range)
+            case .code: storage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13.5, weight: .regular), range: span.range)
             }
         }
-        storage.endEditing()
     }
 }

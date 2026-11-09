@@ -71,8 +71,8 @@ struct SurfaceModifier: ViewModifier {
                 .background(shape.fill(fill))
                 .overlay(
                     ZStack {
-                        shape.stroke(Brand.Palette.shade, lineWidth: 3).blur(radius: 2).offset(x: 1.5, y: 1.5)
-                        shape.stroke(Brand.Palette.glow, lineWidth: 3).blur(radius: 2).offset(x: -1.5, y: -1.5)
+                        shape.stroke(Brand.Palette.shade, lineWidth: 4).blur(radius: 3).offset(x: 1.5, y: 1.5).opacity(0.6)
+                        shape.stroke(Brand.Palette.glow, lineWidth: 4).blur(radius: 3).offset(x: -1.5, y: -1.5).opacity(0.8)
                     }
                     .clipShape(shape)
                     .allowsHitTesting(false)

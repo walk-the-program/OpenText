@@ -219,10 +219,7 @@ final class PDFReaderModel {
     var query = ""
     var results: [PDFSelection] = []
     var resultIndex = 0
-    var zoomRequest: ZoomRequest?
     private var thumbnails: [ObjectIdentifier: NSImage] = [:]
-
-    enum ZoomRequest: Equatable { case fit, scale(CGFloat) }
 
     init(document: PDFDocument) { self.document = document }
 

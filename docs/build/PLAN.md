@@ -4,11 +4,11 @@ Coordinator: main session (Opus). Workers: 3 Sonnet agents, no further delegatio
 Everything here is a **local Swift interface spec** for agents to build against. There is no network API; the app, CLI and MCP server run only on this Mac.
 
 ## Hard constraints (all tasks)
-1. No downloads, installs, package fetches or network calls. Only Apple SDK frameworks (SwiftUI, AppKit, PDFKit, Vision, CryptoKit, CommonCrypto, ImageIO, UniformTypeIdentifiers, LocalAuthentication, Security, Carbon for hotkeys) and tools already on the Mac (`xcodegen`, `xcodebuild`, `swift`, `textutil`). SwiftPM packages must have **zero** external dependencies.
+1. No downloads, installs or network calls except the approved list (D-020, contract rev 2): swift-markdown 0.9.0, swift-argument-parser 1.8.2, modelcontextprotocol/swift-sdk 0.12.1, sindresorhus/KeyboardShortcuts 1.10.0 (fetched by SwiftPM), and the Inter Tight font already in quarantine. Otherwise only Apple SDK frameworks (SwiftUI, AppKit, PDFKit, Vision, CryptoKit, CommonCrypto, ImageIO, UniformTypeIdentifiers, LocalAuthentication, Security, Carbon for hotkeys) and tools already on the Mac (`xcodegen`, `xcodebuild`, `swift`, `textutil`). No other external dependencies.
 2. Nothing may appear on Walker's screen. Never launch the app, open a window, run UI tests, `open` a file, or run a browser. Render previews only off-screen (`ImageRenderer`, `NSView.cacheDisplay` without a window, or `~/.claude/skills/app-look-lock/scripts/render_png.sh`, which is fixed to stay off-screen).
 3. Never change system state: don't set default apps, don't enable extensions (`pluginkit`), don't touch the Keychain outside tests that clean up after themselves, don't write outside the repo except temp dirs and DerivedData.
 4. Don't commit. The coordinator commits after accepting work.
-5. Look is locked: `design/brand.json`, `BUILD-PACK.md` (palette, materials, one primary per window), `docs/product/ux-brief.md`, decision D-018. Fonts: Inter only (D-019), files already in `Packages/OpenTextDesign/Sources/OpenTextDesign/Fonts/`.
+5. Look is locked: `design/brand.json`, `BUILD-PACK.md` (palette, materials, one primary per window), `docs/product/ux-brief.md`, decision D-018. Fonts: Inter (body) and Inter Tight (headings) per D-020; Inter files are in `Packages/OpenTextDesign/Sources/OpenTextDesign/Fonts/`, Inter Tight variable font at /private/tmp/claude-501/-Users-walker-tracy--claude-spares-spare-Y1gN1z/0256d364-25c9-4ac4-adf9-9cdeb5759229/scratchpad/dl-fonts/InterTight-VF.ttf (+ OFL.txt), sha256 b81b73dc…f88b6f.
 
 ## Acceptance criteria (V1)
 | # | Criterion | Owner | Check |
@@ -33,7 +33,7 @@ Everything here is a **local Swift interface spec** for agents to build against.
 
 Anything else: ask the coordinator first.
 
-## Shared contracts (revision 1)
+## Shared contracts (revision 2, 2026-11-08 21:35: approved libraries added; signatures unchanged)
 
 ### OpenTextKit (W1) — library `OpenTextKit`, executables `opentext`, `opentext-mcp`; macOS 26; Swift 6 language mode
 ```swift

@@ -1,5 +1,15 @@
 # Handoff log
 
+## 2026-11-09 (night) · Home window, open-after-create, RTF and Office viewing
+
+**Did:** Walker's first-use feedback. Root cause of both bugs: every window opened through SwiftUI's `openWindow` captured from the MenuBarExtra label, which never opens anything (settings showed `setupShown: true` with no setup window; `~/Desktop/stuff.txt` was created but never opened).
+- HOME-1 (0562aa5): `Window("OpenText", id: "home")` presented on launch (`HomeView` in OpenTextUI + `App/Views/HomeHost.swift`): mark, New file card (embedded quick create), Open card (Open a file…, drop zone, recents), "Finish setup" link. Dock click and Window ▸ OpenText Home (⇧⌘H) reopen it; closing leaves the menu bar item. RouterBridge now on every live window and the popover content, not the label. Quick create closes its popover first, then creates and opens the file. First-run setup opens from home. Launch-to-open-files closes home if the open arrives within 3 s.
+- HOME-2 (e0aba07): read-only viewer for rtf, docx, doc, odt (`RichTextView`; white page, Copy Text, Save as .txt/.md, Convert); html shows as source text (the HTML importer can fetch remote content). Declared as Viewer / Alternate so TextEdit stays default for RTF. rtfd not supported (DocFormat doesn't know it).
+- HOME-3 (41de943): tighter New file card spacing.
+**Verified:** OpenTextUI 46 tests, App/Logic 28 pass; Debug build; home and rich-text snapshots checked. Installed with `scripts/install.sh`; Spotlight and LaunchServices list only `/Applications/OpenText.app`; built Info.plist has the Rich Text and Office types. Nothing launched by me.
+**Decided:** Rich documents are read-only (Walker's original pain was being pushed into RTF); RTF isn't offered in New file.
+**Next:** Walker launches /Applications/OpenText.app: home window appears, Create opens the file, an .rtf opens. The 3 s launch-with-file rule and openWindow after its source window closes are the least certain parts.
+
 ## 2026-11-09 (evening) · App icon fixed, one installed copy
 
 **Did:** Found why the icon looked wrong: macOS 26 drew the pre-drawn `AppIcon.appiconset` tile as a grey legacy icon with no citron fold at 128–256px (Spotlight, Finder). Added `App/AppIcon.icon` (Icon Composer format, vector mark from Walker's source SVGs, light and dark backgrounds, no glass translucency) and regenerated the project. Deleted all built copies (`build/OpenText.app`, both DerivedData builds, 11 stale scratch registrations) and added `scripts/install.sh`, which builds once and installs the only copy at `/Applications/OpenText.app`.

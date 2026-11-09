@@ -62,17 +62,12 @@ public struct SetupView: View {
                 tile(title: "Turn on Finder right-click", detail: "New Text File, New Markdown File and Convert to… in Finder. Switch it on in System Settings.", done: state.finderExtensionOn) {
                     Button(state.finderExtensionOn ? "Open Settings" : "Turn on…", action: actions.onOpenFinderSettings).buttonStyle(.secondaryAction)
                 }
-                tile(title: "Your new-file shortcut", detail: "Press it anywhere to make a file.", done: nil) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        if let shortcutRecorder {
-                            shortcutRecorder
-                        } else {
-                            ShortcutField(shortcut: state.shortcut, recording: $recording) { new in
-                                state.shortcut = new; actions.onShortcutChanged(new)
-                            }
-                        }
-                        if let warning = state.shortcutWarning {
-                            Text(warning).font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
+                tile(title: "Your new-file shortcut", detail: "Press it anywhere to make a file.", done: nil, note: state.shortcutWarning) {
+                    if let shortcutRecorder {
+                        shortcutRecorder
+                    } else {
+                        ShortcutField(shortcut: state.shortcut, recording: $recording) { new in
+                            state.shortcut = new; actions.onShortcutChanged(new)
                         }
                     }
                 }
@@ -87,7 +82,7 @@ public struct SetupView: View {
         .background(Brand.Palette.canvas)
     }
 
-    private func tile<Control: View>(title: String, detail: String, done: Bool?, @ViewBuilder control: () -> Control) -> some View {
+    private func tile<Control: View>(title: String, detail: String, done: Bool?, note: String? = nil, @ViewBuilder control: () -> Control) -> some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
             HStack(spacing: 6) {
                 if let done {
@@ -100,11 +95,14 @@ public struct SetupView: View {
             .frame(height: 16)
             Text(title).brandHeading(17).fixedSize(horizontal: false, vertical: true)
             Text(detail).font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
+            if let note {
+                Text(note).font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.ink).fixedSize(horizontal: false, vertical: true)
+            }
             Spacer(minLength: 0)
             control()
         }
         .padding(20)
-        .frame(maxWidth: .infinity, minHeight: 220, maxHeight: 220, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 230, maxHeight: 230, alignment: .topLeading)
         .raisedSurface(radius: Brand.Radius.card, fill: Brand.Palette.surface)
     }
 }

@@ -61,20 +61,31 @@ enum Snap {
 // MARK: Fixtures
 
 enum Fixture {
-    static let lease: [String] = [
-        "3.1 Monthly Rent. Tenant shall pay Landlord rent of $2,400.00 per month, due on or before the first day of each month,",
-        "beginning January 1, 2026, and ending with the payment due December 1, 2026.",
-        "",
-        "3.2 Late Charge. Rent received after the fifth (5th) day of the month carries a late charge of $75.00, plus",
-        "$10.00 for each additional day until paid in full.",
-        "",
-        "3.3 Security Deposit. Tenant shall pay a security deposit of $2,400.00 at signing, to be held in a separate",
-        "account until the Lease ends. The deposit is not a limit on Tenant's liability and may not be applied as the final",
-        "month's rent.",
-        "",
-        "3.4 Return of Deposit. Within thirty (30) days after Tenant vacates the Premises, Landlord shall return the",
-        "deposit with an itemized list of lawful deductions, no later than January 30, 2027.",
+    /// Paragraphs; `wrapped` breaks them to fit the 612pt page with 60pt margins.
+    static let leaseParagraphs: [String] = [
+        "3.1 Monthly Rent. Tenant shall pay Landlord rent of $2,400.00 per month, due on or before the first day of each month, beginning January 1, 2026, and ending with the payment due December 1, 2026.",
+        "3.2 Late Charge. Rent received after the fifth (5th) day of the month carries a late charge of $75.00, plus $10.00 for each additional day until paid in full.",
+        "3.3 Security Deposit. Tenant shall pay a security deposit of $2,400.00 at signing, to be held in a separate account until the Lease ends. The deposit is not a limit on Tenant's liability and may not be applied as the final month's rent.",
+        "3.4 Return of Deposit. Within thirty (30) days after Tenant vacates the Premises, Landlord shall return the deposit with an itemized list of lawful deductions, no later than January 30, 2027.",
     ]
+
+    static func wrapped(_ paragraphs: [String], width: CGFloat, fontSize: CGFloat) -> [String] {
+        let font = NSFont.systemFont(ofSize: fontSize)
+        func measure(_ s: String) -> CGFloat {
+            CTLineGetTypographicBounds(CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: [.font: font])), nil, nil, nil)
+        }
+        var lines: [String] = []
+        for (i, para) in paragraphs.enumerated() {
+            if i > 0 { lines.append("") }
+            var current = ""
+            for word in para.split(separator: " ") {
+                let next = current.isEmpty ? String(word) : current + " " + word
+                if measure(next) > width, !current.isEmpty { lines.append(current); current = String(word) } else { current = next }
+            }
+            if !current.isEmpty { lines.append(current) }
+        }
+        return lines
+    }
 
     @MainActor static func leasePDF(pages: Int = 12) -> PDFDocument {
         let data = NSMutableData()
@@ -90,7 +101,7 @@ enum Fixture {
             }
             draw("Residential Lease Agreement", 730, 9)
             draw("\(n). Rent and Deposit", 690, 20, .semibold)
-            for (i, l) in lease.enumerated() { draw(l, 650 - CGFloat(i) * 22, 10) }
+            for (i, l) in wrapped(leaseParagraphs, width: 612 - 120, fontSize: 10).enumerated() { draw(l, 650 - CGFloat(i) * 22, 10) }
             draw("Initials ______ ______ · Page \(n) of \(pages)", 40, 8)
             ctx.endPDFPage()
         }
@@ -98,15 +109,22 @@ enum Fixture {
         return PDFDocument(data: data as Data)!
     }
 
+    /// A real 4032 x 3024 bitmap (not a drawing handler), so the editor reports 4032 x 3024.
     static func photo() -> NSImage {
-        let size = NSSize(width: 4032, height: 3024)
-        let img = NSImage(size: size, flipped: false) { rect in
-            Brand.NSPalette.secTint.setFill(); rect.fill()
-            Brand.NSPalette.primary.setFill(); NSBezierPath(ovalIn: NSRect(x: 2400, y: 1800, width: 800, height: 800)).fill()
-            Brand.NSPalette.line.setFill(); NSBezierPath(rect: NSRect(x: 0, y: 0, width: 4032, height: 900)).fill()
-            Brand.NSPalette.muted.setFill(); NSBezierPath(rect: NSRect(x: 600, y: 900, width: 1100, height: 1500)).fill()
-            return true
-        }
+        let w = 4032, h = 3024
+        let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: w, pixelsHigh: h, bitsPerSample: 8, samplesPerPixel: 4,
+                                   hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+        rep.size = NSSize(width: w, height: h)
+        let ctx = NSGraphicsContext(bitmapImageRep: rep)!
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = ctx
+        Brand.NSPalette.secTint.setFill(); NSRect(x: 0, y: 0, width: w, height: h).fill()
+        Brand.NSPalette.primary.setFill(); NSBezierPath(ovalIn: NSRect(x: 2400, y: 1800, width: 800, height: 800)).fill()
+        Brand.NSPalette.line.setFill(); NSBezierPath(rect: NSRect(x: 0, y: 0, width: 4032, height: 900)).fill()
+        Brand.NSPalette.muted.setFill(); NSBezierPath(rect: NSRect(x: 600, y: 900, width: 1100, height: 1500)).fill()
+        NSGraphicsContext.restoreGraphicsState()
+        let img = NSImage(size: rep.size)
+        img.addRepresentation(rep)
         return img
     }
 
@@ -176,11 +194,11 @@ enum Fixture {
             var qc = QuickCreateState()
             Snap.render(QuickCreateView(state: Binding(get: { qc }, set: { qc = $0 })), name: "quick-create", dark: dark, center: true)
             var setup = SetupState(defaultAppsDone: true, finderExtensionOn: false, shortcut: "ctrl+opt+n", shortcutWarning: "Clashes with the speech-to-text shortcut.")
-            Snap.render(SetupView(state: Binding(get: { setup }, set: { setup = $0 })), name: "setup", dark: dark)
+            Snap.render(SetupView(state: Binding(get: { setup }, set: { setup = $0 })), name: "setup", dark: dark, size: CGSize(width: 900, height: 440))
             Snap.render(LockedFileView(fileName: "Tracy Christmas.otlock", canUseTouchID: true, onUnlock: { _ in }), name: "locked-file", dark: dark)
-            Snap.render(ConvertSheet(sourceFormat: "pdf", targets: ["png", "txt", "md"], onConvert: { _ in }).floatingSurface(radius: Brand.Radius.card).padding(40), name: "convert-sheet", dark: dark, center: true)
-            Snap.render(RecoveryKeySheet(displayString: "K7QM-2XD4-9HPR-ZT3W-B6NC-4YVE-JA8F-SGU5").floatingSurface(radius: Brand.Radius.card), name: "recovery-key-sheet", dark: dark, center: true)
-            Snap.render(SignaturePad().floatingSurface(radius: Brand.Radius.card), name: "signature-pad", dark: dark, center: true)
+            Snap.render(ConvertSheet(sourceFormat: "pdf", targets: ["png", "txt", "md"], onConvert: { _ in }).clipShape(RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous)).floatingSurface(radius: Brand.Radius.card).padding(40), name: "convert-sheet", dark: dark, center: true)
+            Snap.render(RecoveryKeySheet(displayString: "K7QM-2XD4-9HPR-ZT3W-B6NC-4YVE-JA8F-SGU5").clipShape(RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous)).floatingSurface(radius: Brand.Radius.card), name: "recovery-key-sheet", dark: dark, center: true)
+            Snap.render(SignaturePad().clipShape(RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous)).floatingSurface(radius: Brand.Radius.card), name: "signature-pad", dark: dark, center: true)
         }
     }
 }

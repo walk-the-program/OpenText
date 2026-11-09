@@ -2,9 +2,10 @@ import SwiftUI
 
 /// Soft Form surfaces. One light source, top-left: highlight up-left, shadow down-right, in both modes.
 extension View {
-    /// Raised: cards and secondary buttons.
-    public func raisedSurface(radius: CGFloat = Brand.Radius.card, fill: Color = Brand.Palette.canvas) -> some View {
-        modifier(SurfaceModifier(kind: .raised, radius: radius, fill: fill))
+    /// Raised: cards (`.card` depth) and small controls such as buttons and chips (`.control` depth).
+    public func raisedSurface(radius: CGFloat = Brand.Radius.card, fill: Color = Brand.Palette.canvas,
+                              depth: SurfaceDepth = .card) -> some View {
+        modifier(SurfaceModifier(kind: .raised, radius: radius, fill: fill, depth: depth))
     }
 
     /// Recessed: fields and wells.
@@ -47,11 +48,15 @@ extension View {
     }
 }
 
+/// Shadow scale for raised surfaces: `.control` is tighter so 24-28pt controls do not get a halo.
+public enum SurfaceDepth: Sendable { case card, control }
+
 struct SurfaceModifier: ViewModifier {
     enum Kind { case raised, recessed, floating }
     let kind: Kind
     let radius: CGFloat
     let fill: Color
+    var depth: SurfaceDepth = .card
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
@@ -59,8 +64,8 @@ struct SurfaceModifier: ViewModifier {
         case .raised:
             content
                 .background(shape.fill(fill)
-                    .shadow(color: Brand.Palette.glow, radius: 2.5, x: -2, y: -2)
-                    .shadow(color: Brand.Palette.shade, radius: 5, x: 3, y: 4))
+                    .shadow(color: Brand.Palette.glow, radius: depth == .card ? 2.5 : 1, x: depth == .card ? -2 : -1, y: depth == .card ? -2 : -1)
+                    .shadow(color: Brand.Palette.shade, radius: depth == .card ? 5 : 2, x: depth == .card ? 3 : 1, y: depth == .card ? 4 : 1.5))
         case .recessed:
             content
                 .background(shape.fill(fill))

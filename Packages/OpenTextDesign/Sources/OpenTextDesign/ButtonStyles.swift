@@ -45,8 +45,9 @@ public struct SecondaryActionButtonStyle: ButtonStyle {
                 .padding(.horizontal, 12)
                 .frame(height: Brand.Size.control)
             Group {
-                if configuration.isPressed { base.recessedSurface(radius: Brand.Radius.button) }
-                else { base.raisedSurface(radius: Brand.Radius.button) }
+                if !isEnabled { base.background(RoundedRectangle(cornerRadius: Brand.Radius.button, style: .continuous).fill(Brand.Palette.canvas)) }
+                else if configuration.isPressed { base.recessedSurface(radius: Brand.Radius.button) }
+                else { base.raisedSurface(radius: Brand.Radius.button, depth: .control) }
             }
             .focusRing(isFocused, radius: Brand.Radius.button)
             .opacity(isEnabled ? 1 : 0.45)

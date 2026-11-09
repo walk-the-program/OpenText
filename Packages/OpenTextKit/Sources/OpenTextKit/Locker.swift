@@ -114,10 +114,19 @@ public enum Locker {
 
     static func uint32(_ v: Int) -> Data { withUnsafeBytes(of: UInt32(v).bigEndian) { Data($0) } }
 
+    /// Largest file (and largest locked file) Locker will handle; the whole payload is processed in memory.
+    static let maxFileSize = 2 * 1024 * 1024 * 1024
+
+    static func checkSize(_ url: URL) throws {
+        let size = ((try? FileManager.default.attributesOfItem(atPath: url.path))?[.size] as? NSNumber)?.intValue ?? 0
+        if size > maxFileSize { throw OpenTextError.fileTooLarge(url) }
+    }
+
     // MARK: lock
 
     public static func lock(_ input: URL, password: String, recoveryPublicKeyBase64: String?, output: URL? = nil, removeOriginal: Bool = false) throws -> URL {
-        guard let content = FileManager.default.contents(atPath: input.path) else { throw OpenTextError.unreadable(input) }
+        try checkSize(input)
+        guard let content = try? Data(contentsOf: input, options: .mappedIfSafe) else { throw OpenTextError.unreadable(input) }
         let dest = Files.unique(output ?? input.appendingPathExtension("otlock"))
         try lock(data: content, originalName: input.lastPathComponent, password: password, recoveryPublicKeyBase64: recoveryPublicKeyBase64, output: dest)
         if removeOriginal {
@@ -126,7 +135,7 @@ public enum Locker {
                 try? FileManager.default.removeItem(at: dest)
                 throw OpenTextError.writeFailed(dest)
             }
-            do { try FileManager.default.trashItem(at: input, resultingItemURL: nil) } catch { throw OpenTextError.originalNotRemoved(input) }
+            do { try FileManager.default.trashItem(at: input, resultingItemURL: nil) } catch { throw OpenTextError.originalNotRemoved(original: input, locked: dest) }
         }
         return dest
     }
@@ -135,6 +144,7 @@ public enum Locker {
     /// A fresh file key and salts are generated each call, so `lockID(of:)` changes on every save.
     @discardableResult
     public static func lock(data content: Data, originalName: String, password: String, recoveryPublicKeyBase64: String?, output: URL) throws -> URL {
+        guard content.count <= maxFileSize else { throw OpenTextError.fileTooLarge(output) }
         let fileKey = SymmetricKey(size: .bits256)
         let fileKeyData = fileKey.withUnsafeBytes { Data($0) }
 
@@ -167,13 +177,34 @@ public enum Locker {
         let enc = JSONEncoder()
         enc.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let headerJSON = try enc.encode(header)
-        let prefix = magic + Data([1]) + uint32(headerJSON.count) + headerJSON
+        var prefix = magic
+        prefix.append(1)
+        prefix.append(uint32(headerJSON.count))
+        prefix.append(headerJSON)
 
         let name = Data(originalName.utf8)
-        let plain = uint32(name.count) + name + content
-        let body = try seal(plain, key: fileKey, nonce: payloadNonce, aad: prefix)
+        var plain = Data()
+        plain.reserveCapacity(4 + name.count + content.count)
+        plain.append(uint32(name.count))
+        plain.append(name)
+        plain.append(content)
+        let box = try AES.GCM.seal(plain, using: fileKey, nonce: payloadNonce, authenticating: prefix)
+        plain = Data()
 
-        do { try (prefix + body).write(to: output, options: .atomic) } catch { throw OpenTextError.writeFailed(output) }
+        // Stream prefix + ciphertext + tag straight to a temp file, then place it atomically.
+        do {
+            try Files.withTempDir { dir in
+                let tmp = dir.appendingPathComponent("out.otlock")
+                guard FileManager.default.createFile(atPath: tmp.path, contents: nil) else { throw OpenTextError.writeFailed(output) }
+                let h = try FileHandle(forWritingTo: tmp)
+                defer { try? h.close() }
+                try h.write(contentsOf: prefix)
+                try h.write(contentsOf: box.ciphertext)
+                try h.write(contentsOf: box.tag)
+                try h.close()
+                try Files.place(tmp, output)
+            }
+        } catch { throw OpenTextError.writeFailed(output) }
         return output
     }
 
@@ -182,7 +213,8 @@ public enum Locker {
     struct Parsed { var header: Header; var prefix: Data; var body: Data }
 
     static func parse(_ input: URL) throws -> Parsed {
-        guard let data = FileManager.default.contents(atPath: input.path) else { throw OpenTextError.unreadable(input) }
+        try checkSize(input)
+        guard let data = try? Data(contentsOf: input, options: .mappedIfSafe) else { throw OpenTextError.unreadable(input) }
         guard data.count >= 5, data.prefix(4) == magic else { throw OpenTextError.notLocked }
         guard data[4] == 1, data.count >= 9 else { throw OpenTextError.corruptLockedFile }
         let len = data[5..<9].reduce(0) { ($0 << 8) | Int($1) }
@@ -190,7 +222,7 @@ public enum Locker {
         let headerJSON = data[9..<(9 + len)]
         guard let header = try? JSONDecoder().decode(Header.self, from: headerJSON), header.version == 1,
               (600_000...10_000_000).contains(header.password.iterations) else { throw OpenTextError.corruptLockedFile }
-        return Parsed(header: header, prefix: Data(data[0..<(9 + len)]), body: Data(data[(9 + len)...]))
+        return Parsed(header: header, prefix: data[0..<(9 + len)], body: data[(9 + len)...])
     }
 
     static func decryptPayload(_ p: Parsed, fileKey: SymmetricKey) throws -> (data: Data, originalName: String) {

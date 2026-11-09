@@ -25,6 +25,21 @@ final class LockerTests: TempTestCase {
         XCTAssertEqual(try Locker.decrypt(try Locker.lock(empty, password: "p", recoveryPublicKeyBase64: nil), password: "p").data.count, 0)
     }
 
+    func testLargeRoundTripAndSizeLimit() throws {
+        let big = file("big.bin"); let bytes = Data((0..<3_000_000).map { UInt8($0 % 253) }); try bytes.write(to: big)
+        let locked = try Locker.lock(big, password: "p", recoveryPublicKeyBase64: nil)
+        XCTAssertEqual(try Locker.decrypt(locked, password: "p").data, bytes)
+        XCTAssertEqual(try Data(contentsOf: try Locker.unlock(locked, password: "p")), bytes)
+        // A sparse file just over 2 GB is refused up front, for both lock and unlock.
+        let huge = file("huge.bin")
+        FileManager.default.createFile(atPath: huge.path, contents: nil)
+        let h = try FileHandle(forWritingTo: huge); try h.truncate(atOffset: UInt64(Locker.maxFileSize) + 1); try h.close()
+        XCTAssertThrowsError(try Locker.lock(huge, password: "p", recoveryPublicKeyBase64: nil)) {
+            XCTAssertEqual($0 as? OpenTextError, .fileTooLarge(huge))
+        }
+        XCTAssertThrowsError(try Locker.unlock(huge, password: "p")) { XCTAssertEqual($0 as? OpenTextError, .fileTooLarge(huge)) }
+    }
+
     func testLockID() throws {
         let src = try write("id.txt", "x")
         let a = try Locker.lock(src, password: "p", recoveryPublicKeyBase64: nil)
@@ -276,8 +291,10 @@ final class SecurityFixTests: TempTestCase {
         let out = try Locker.lock(src, password: "pw", recoveryPublicKeyBase64: nil, removeOriginal: true)
         XCTAssertFalse(FileManager.default.fileExists(atPath: src.path))
         XCTAssertEqual(String(decoding: try Locker.decrypt(out, password: "pw").data, as: UTF8.self), "trash me")
-        XCTAssertEqual(OpenTextError.originalNotRemoved(src), OpenTextError.originalNotRemoved(src))
-        XCTAssertNotNil(OpenTextError.originalNotRemoved(src).errorDescription)
+        let locked = file("t.txt.otlock")
+        XCTAssertEqual(OpenTextError.originalNotRemoved(original: src, locked: locked), OpenTextError.originalNotRemoved(original: src, locked: locked))
+        XCTAssertTrue(OpenTextError.originalNotRemoved(original: src, locked: locked).errorDescription!.contains(locked.path))
+        XCTAssertNotNil(OpenTextError.fileTooLarge(src).errorDescription)
     }
 
     func testIterationBounds() throws {

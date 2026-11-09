@@ -42,24 +42,24 @@ private struct HTMLVisitor: MarkupVisitor {
         return out
     }
     mutating func defaultVisit(_ m: Markup) -> String { children(m) }
-    mutating func visitText(_ t: Text) -> String { Markdown_escape(t.string) }
+    mutating func visitText(_ t: Text) -> String { MD.escape(t.string) }
     mutating func visitParagraph(_ p: Paragraph) -> String { "<p>\(children(p))</p>\n" }
     mutating func visitHeading(_ h: Heading) -> String { "<h\(h.level)>\(children(h))</h\(h.level)>\n" }
     mutating func visitEmphasis(_ e: Emphasis) -> String { "<em>\(children(e))</em>" }
     mutating func visitStrong(_ s: Strong) -> String { "<strong>\(children(s))</strong>" }
     mutating func visitStrikethrough(_ s: Strikethrough) -> String { "<del>\(children(s))</del>" }
-    mutating func visitInlineCode(_ c: InlineCode) -> String { "<code>\(Markdown_escape(c.code))</code>" }
-    mutating func visitCodeBlock(_ c: CodeBlock) -> String { "<pre><code>\(Markdown_escape(c.code))</code></pre>\n" }
+    mutating func visitInlineCode(_ c: InlineCode) -> String { "<code>\(MD.escape(c.code))</code>" }
+    mutating func visitCodeBlock(_ c: CodeBlock) -> String { "<pre><code>\(MD.escape(c.code))</code></pre>\n" }
     mutating func visitBlockQuote(_ b: BlockQuote) -> String { "<blockquote>\n\(children(b))</blockquote>\n" }
     mutating func visitThematicBreak(_ t: ThematicBreak) -> String { "<hr>\n" }
     mutating func visitLineBreak(_ l: LineBreak) -> String { "<br>\n" }
     mutating func visitSoftBreak(_ s: SoftBreak) -> String { "\n" }
-    mutating func visitInlineHTML(_ h: InlineHTML) -> String { Markdown_escape(h.rawHTML) }
-    mutating func visitHTMLBlock(_ h: HTMLBlock) -> String { "<p>\(Markdown_escape(h.rawHTML.trimmingCharacters(in: .newlines)))</p>\n" }
-    mutating func visitLink(_ l: Link) -> String { "<a href=\"\(Markdown_escape(l.destination ?? ""))\">\(children(l))</a>" }
+    mutating func visitInlineHTML(_ h: InlineHTML) -> String { MD.escape(h.rawHTML) }
+    mutating func visitHTMLBlock(_ h: HTMLBlock) -> String { "<p>\(MD.escape(h.rawHTML.trimmingCharacters(in: .newlines)))</p>\n" }
+    mutating func visitLink(_ l: Link) -> String { "<a href=\"\(MD.escape(l.destination ?? ""))\">\(children(l))</a>" }
     mutating func visitImage(_ i: Image) -> String {
         // Never emit <img>: conversion must not fetch remote or file:// resources.
-        Markdown_escape(i.plainText.isEmpty ? (i.source ?? "") : i.plainText)
+        MD.escape(i.plainText.isEmpty ? (i.source ?? "") : i.plainText)
     }
     mutating func visitUnorderedList(_ l: UnorderedList) -> String { "<ul>\n\(children(l))</ul>\n" }
     mutating func visitOrderedList(_ l: OrderedList) -> String { "<ol>\n\(children(l))</ol>\n" }
@@ -78,4 +78,3 @@ private struct HTMLVisitor: MarkupVisitor {
     mutating func visitTableCell(_ t: Markdown.Table.Cell) -> String { "<td>\(children(t))</td>" }
 }
 
-private func Markdown_escape(_ s: String) -> String { MD.escape(s) }

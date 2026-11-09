@@ -43,15 +43,7 @@ enum ImageTools {
     }
 
     static func write(_ image: CGImage, as format: DocFormat, to url: URL, quality: Double) throws {
-        let type: UTType
-        switch format {
-        case .jpg: type = .jpeg
-        case .png: type = .png
-        case .tiff: type = .tiff
-        case .heic: type = .heic
-        case .gif: type = .gif
-        default: throw OpenTextError.unsupportedConversion(from: .png, to: format)
-        }
+        guard let type = format.imageUTType else { throw OpenTextError.unsupportedConversion(from: .png, to: format) }
         guard let dest = CGImageDestinationCreateWithURL(url as CFURL, type.identifier as CFString, 1, nil) else {
             throw OpenTextError.writeFailed(url)
         }

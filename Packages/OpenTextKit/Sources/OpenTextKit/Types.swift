@@ -1,50 +1,60 @@
 import Foundation
+import UniformTypeIdentifiers
 
 public enum DocFormat: String, CaseIterable, Codable, Sendable {
     case txt, md, rtf, html, docx, doc, odt, csv, json, pdf, png, jpg, heic, tiff, gif, webp, otlock
 
-    /// By file extension, case-insensitive; "jpeg"→jpg, "markdown"→md, "htm"→html.
-    public init?(url: URL) {
-        self.init(name: url.pathExtension)
+    /// The single extension table: every accepted spelling (lowercase) and the format it means.
+    private static let aliases: [String: DocFormat] = {
+        var t = [String: DocFormat]()
+        for f in DocFormat.allCases { t[f.rawValue] = f }
+        t["text"] = .txt; t["markdown"] = .md; t["htm"] = .html; t["jpeg"] = .jpg; t["tif"] = .tiff
+        return t
+    }()
+
+    /// By file extension or format name, case-insensitive, leading "." and spaces ignored.
+    /// "jpeg"→jpg, "markdown"→md, "htm"→html, "tif"→tiff, "text"→txt.
+    public init?(fileExtension: String) {
+        guard let f = Self.aliases[fileExtension.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ". "))] else { return nil }
+        self = f
     }
 
-    /// By name or extension (same aliases as `init(url:)`, plus "tif", "text"). Added for CLI/MCP use.
-    public init?(name: String) {
-        switch name.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: ". ")) {
-        case "txt", "text": self = .txt
-        case "md", "markdown": self = .md
-        case "rtf": self = .rtf
-        case "html", "htm": self = .html
-        case "docx": self = .docx
-        case "doc": self = .doc
-        case "odt": self = .odt
-        case "csv": self = .csv
-        case "json": self = .json
-        case "pdf": self = .pdf
-        case "png": self = .png
-        case "jpg", "jpeg": self = .jpg
-        case "heic": self = .heic
-        case "tiff", "tif": self = .tiff
-        case "gif": self = .gif
-        case "webp": self = .webp
-        case "otlock": self = .otlock
-        default: return nil
-        }
+    /// By file extension, case-insensitive (see `init(fileExtension:)` for aliases).
+    public init?(url: URL) { self.init(fileExtension: url.pathExtension) }
+
+    /// By name or extension; same as `init(fileExtension:)`.
+    public init?(name: String) { self.init(fileExtension: name) }
+
+    /// Canonical lowercase extension for any accepted spelling ("JPEG"→"jpg"); unknown input is returned lowercased.
+    public static func canonicalExtension(_ ext: String) -> String {
+        DocFormat(fileExtension: ext)?.fileExtension ?? ext.lowercased()
     }
 
     public var fileExtension: String { rawValue }
 
-    public var isText: Bool {
-        switch self {
-        case .txt, .md, .rtf, .html, .docx, .doc, .odt, .csv, .json: return true
-        default: return false
-        }
-    }
+    /// Document formats (txt, md, rtf, html, docx, doc, odt, csv, json).
+    public static let textFormats: Set<DocFormat> = [.txt, .md, .rtf, .html, .docx, .doc, .odt, .csv, .json]
+    /// Raster image formats, including read-only webp.
+    public static let imageFormats: Set<DocFormat> = [.png, .jpg, .heic, .tiff, .gif, .webp]
+    /// Image formats the engine can write (everything in `imageFormats` except webp).
+    public static let writableImageFormats: Set<DocFormat> = [.png, .jpg, .heic, .tiff, .gif]
+    /// Plain-text formats the app edits as raw text.
+    public static let plainTextFormats: Set<DocFormat> = [.txt, .csv, .json]
+    /// Formats `create_file` / the New menu can create empty.
+    public static let newFileFormats: Set<DocFormat> = [.txt, .md, .csv, .html]
 
-    public var isImage: Bool {
+    public var isText: Bool { Self.textFormats.contains(self) }
+    public var isImage: Bool { Self.imageFormats.contains(self) }
+
+    /// ImageIO type for writable image formats; nil otherwise.
+    public var imageUTType: UTType? {
         switch self {
-        case .png, .jpg, .heic, .tiff, .gif, .webp: return true
-        default: return false
+        case .png: return .png
+        case .jpg: return .jpeg
+        case .tiff: return .tiff
+        case .heic: return .heic
+        case .gif: return .gif
+        default: return nil
         }
     }
 }

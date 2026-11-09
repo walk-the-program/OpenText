@@ -12,6 +12,12 @@ final class ConversionTests: TempTestCase {
         XCTAssertEqual(DocFormat(url: URL(fileURLWithPath: "/a/b.markdown")), .md)
         XCTAssertEqual(DocFormat(url: URL(fileURLWithPath: "/a/b.HTM")), .html)
         XCTAssertNil(DocFormat(url: URL(fileURLWithPath: "/a/b.xyz")))
+        XCTAssertEqual(DocFormat(fileExtension: ".TIF"), .tiff); XCTAssertEqual(DocFormat(fileExtension: "text"), .txt)
+        XCTAssertNil(DocFormat(fileExtension: ""))
+        XCTAssertEqual(DocFormat.canonicalExtension("JPEG"), "jpg"); XCTAssertEqual(DocFormat.canonicalExtension("Xyz"), "xyz")
+        XCTAssertEqual(DocFormat.textFormats.union(DocFormat.imageFormats).union([.pdf, .otlock]), Set(DocFormat.allCases))
+        XCTAssertEqual(DocFormat.writableImageFormats, Set(DocFormat.imageFormats.filter { $0.imageUTType != nil }))
+        XCTAssertEqual(DocFormat.imageFormats.subtracting(DocFormat.writableImageFormats), [.webp])
         XCTAssertTrue(DocFormat.docx.isText); XCTAssertTrue(DocFormat.heic.isImage); XCTAssertFalse(DocFormat.pdf.isText)
     }
 

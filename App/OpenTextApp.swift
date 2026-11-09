@@ -29,11 +29,18 @@ struct OpenTextApp: App {
         .defaultLaunchBehavior(.suppressed)
         .commands { menus }
 
+        Window("OpenText", id: "home") {
+            HomeHost().environmentObject(model).modifier(RouterBridge())
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentSize)
+        .defaultLaunchBehavior(.presented)
+
         MenuBarExtra {
-            QuickCreateHost(isPopover: true).environmentObject(model)
+            QuickCreateHost(isPopover: true).environmentObject(model).modifier(RouterBridge())
         } label: {
-            // The label is alive from launch, so it hosts the bridge that supplies openWindow.
-            Image(nsImage: BrandMark.templateImage(pointSize: 16)).modifier(RouterBridge())
+            // The label's environment cannot open windows, so it carries no bridge.
+            Image(nsImage: BrandMark.templateImage(pointSize: 16))
         }
         .menuBarExtraStyle(.window)
 
@@ -51,7 +58,7 @@ struct OpenTextApp: App {
         .defaultLaunchBehavior(.suppressed)
 
         Window("OpenText", id: "notice") {
-            NoticeWindowView().environmentObject(model)
+            NoticeWindowView().environmentObject(model).modifier(RouterBridge())
         }
         .windowResizability(.contentSize)
         .defaultLaunchBehavior(.suppressed)
@@ -103,22 +110,29 @@ struct OpenTextApp: App {
             item("Flip Horizontal", .flipHorizontal, "h", [.command, .control])
             item("Flip Vertical", .flipVertical, "v", [.command, .control])
         }
+        CommandGroup(after: .windowArrangement) {
+            Button("OpenText Home") { model.showHome() }.keyboardShortcut("h", modifiers: [.command, .shift])
+        }
         CommandGroup(after: .appSettings) {
             Button("Set Up OpenText…") { model.showSetup() }
         }
     }
 }
 
-/// Hands SwiftUI's openWindow to AppModel and forwards .onOpenURL.
+/// Hands SwiftUI's openWindow / dismissWindow to AppModel and forwards .onOpenURL.
+/// Attached to every live window root (and the menu bar popover); the most recent attach wins.
 struct RouterBridge: ViewModifier {
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismissWindow) private var dismissWindow
     func body(content: Content) -> some View {
         content
-            .onAppear {
-                AppModel.shared.attach(
-                    openDocument: { openWindow(value: $0) },
-                    openNamed: { openWindow(id: $0) })
-            }
+            .onAppear { AppModel.shared.attach(openWindow, dismissWindow) }
             .onOpenURL { AppModel.shared.handle($0) }
+    }
+}
+
+extension AppModel {
+    func attach(_ open: OpenWindowAction, _ dismiss: DismissWindowAction) {
+        attach(openDocument: { open(value: $0) }, openNamed: { open(id: $0) }, dismissNamed: { dismiss(id: $0) })
     }
 }

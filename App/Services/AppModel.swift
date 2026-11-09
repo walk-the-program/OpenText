@@ -26,6 +26,10 @@ final class AppModel: ObservableObject {
 
     private var openDocument: ((URL) -> Void)?
     private var openNamed: ((String) -> Void)?
+    private var dismissNamed: ((String) -> Void)?
+    /// True when macOS launched us to open files; the home window then closes itself instead of greeting.
+    var launchedWithFiles = false
+    private let launchedAt = Date()
     private var pending: [() -> Void] = []
     private var lastHandled: (url: URL, at: Date)?
     private var started = false
@@ -50,22 +54,34 @@ final class AppModel: ObservableObject {
         let flushed = pending
         pending = []
         flushed.forEach { $0() }
-        // First launch only; the window just shows the tiles and never acts by itself.
-        // Migrate the old UserDefaults flag once.
+        // Migrate the old UserDefaults flag once. The first-run setup window is opened by HomeHost.
         if UserDefaults.standard.bool(forKey: "setupShown") {
             UserDefaults.standard.removeObject(forKey: "setupShown")
             if !settings.setupShown { update { $0.setupShown = true } }
         }
-        if !settings.setupShown && flushed.isEmpty {
+    }
+
+    /// Every live window root attaches; the most recent wins.
+    func attach(openDocument: @escaping (URL) -> Void, openNamed: @escaping (String) -> Void,
+                dismissNamed: @escaping (String) -> Void = { _ in }) {
+        self.openDocument = openDocument
+        self.openNamed = openNamed
+        self.dismissNamed = dismissNamed
+        start()
+    }
+
+    /// Opens that arrive within seconds of launch mean "launched to open this": the home window steps aside.
+    func noteExternalOpen() {
+        if Date().timeIntervalSince(launchedAt) < 3 { launchedWithFiles = true; dismissNamed?("home") }
+    }
+
+    /// Home window greets on launch; first run also opens setup (from the home window's live environment).
+    func homeAppeared() {
+        if launchedWithFiles { dismissNamed?("home"); return }
+        if !settings.setupShown {
             update { $0.setupShown = true }
             showSetup()
         }
-    }
-
-    func attach(openDocument: @escaping (URL) -> Void, openNamed: @escaping (String) -> Void) {
-        self.openDocument = openDocument
-        self.openNamed = openNamed
-        start()
     }
 
     private func whenReady(_ work: @escaping () -> Void) {
@@ -115,12 +131,22 @@ final class AppModel: ObservableObject {
     // MARK: windows
 
     func showQuickCreate() { whenReady { [self] in NSApp.activate(); openNamed?("quick-create") } }
+    func showHome() { whenReady { [self] in NSApp.activate(); openNamed?("home") } }
     func showSetup() { whenReady { [self] in NSApp.activate(); openNamed?("setup") } }
     func showNotice(_ n: Notice) { notice = n; whenReady { [self] in NSApp.activate(); openNamed?("notice") } }
 
     func openFile(_ url: URL) {
         guard FileRouting.kind(for: url) != .unsupported else { NSSound.beep(); return }
-        whenReady { [self] in NSApp.activate(); openDocument?(url) }
+        NSDocumentController.shared.noteNewRecentDocumentURL(url)
+        whenReady { [self] in
+            NSApp.activate()
+            openDocument?(url)
+            // The new window can land behind a closing popover; raise it once SwiftUI has created it.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                NSApp.activate()
+                NSApp.orderedWindows.first { $0.isVisible && $0.canBecomeKey && !($0 is NSPanel) }?.makeKeyAndOrderFront(nil)
+            }
+        }
     }
 
     func openPanel() {
@@ -156,6 +182,7 @@ final class AppModel: ObservableObject {
     func handle(_ url: URL) {
         if let last = lastHandled, last.url == url, Date().timeIntervalSince(last.at) < 1 { return }
         lastHandled = (url, Date())
+        noteExternalOpen()
         if url.isFileURL { openFile(url); return }
         do {
             let route = try RouteGuard.validate(try URLRouter.parse(url))

@@ -12,6 +12,7 @@
 		07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682424D182245CB368B99D3F /* Sheets.swift */; };
 		096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3178FDCDE7F6B4F1472D735F /* SetupHost.swift */; };
 		135C1323E283BC9DDF10753D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */; };
+		3099FE7145AD21B220E65049 /* HomeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3316720B79CBB351763D7E /* HomeHost.swift */; };
 		3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15719015A5A1FF645C2938B /* AppDelegate.swift */; };
 		3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913786DD947C498DC6D50E52 /* DocumentWindowView.swift */; };
@@ -77,6 +78,7 @@
 		87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		913786DD947C498DC6D50E52 /* DocumentWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentWindowView.swift; sourceTree = "<group>"; };
 		A15719015A5A1FF645C2938B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		AB3316720B79CBB351763D7E /* HomeHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHost.swift; sourceTree = "<group>"; };
 		B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickCreateHost.swift; sourceTree = "<group>"; };
 		C58611BFE91CAF8BE0BAFA04 /* OpenText.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenText.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C893490A1E849A7087434F93 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
@@ -154,6 +156,7 @@
 			isa = PBXGroup;
 			children = (
 				913786DD947C498DC6D50E52 /* DocumentWindowView.swift */,
+				AB3316720B79CBB351763D7E /* HomeHost.swift */,
 				D3CE6078D3BF6594734C3023 /* PDFPasswordView.swift */,
 				B4ADEAAF41A3AFC7F024156F /* QuickCreateHost.swift */,
 				3178FDCDE7F6B4F1472D735F /* SetupHost.swift */,
@@ -314,6 +317,7 @@
 				BCEDB7D4577DA2C7456338F1 /* BiometricKeychain.swift in Sources */,
 				03E1B05627BD1BB1CE7574F8 /* DocumentSession.swift in Sources */,
 				4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */,
+				3099FE7145AD21B220E65049 /* HomeHost.swift in Sources */,
 				9399E640D29FFC4BE2E7147B /* HotkeyManager.swift in Sources */,
 				E7619E29BF09B5C967A2B1CD /* LockFlow.swift in Sources */,
 				B723315ADFB03416CC7C172D /* OpenTextApp.swift in Sources */,

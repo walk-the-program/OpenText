@@ -201,6 +201,17 @@ enum Fixture {
         }
     }
 
+    @Test func home() {
+        let recents = ["/Users/me/Documents/Lease 2026.pdf", "/Users/me/Desktop/Notes.md", "/Users/me/Downloads/Receipt.png", "/Users/me/Projects/OpenText/README.txt"].map { URL(fileURLWithPath: $0) }
+        for dark in [false, true] {
+            var qc = QuickCreateState()
+            let size = CGSize(width: 760, height: 480)
+            let rep = Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 }), recents: recents, setupIncomplete: true), name: "home", dark: dark, size: size)
+            #expect(Snap.inkFraction(rep) > 0.02)
+            Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 })), name: "home-empty", dark: dark, size: size)
+        }
+    }
+
     @Test func popoversAndSheets() {
         for dark in [false, true] {
             var qc = QuickCreateState()

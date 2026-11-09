@@ -105,4 +105,27 @@ func order(_ doc: PDFDocument) -> [String] {
         let c = try #require(rep.colorAt(x: x, y: y)?.usingColorSpace(.deviceRGB))
         #expect(c.redComponent < 0.2)
     }
+
+    @Test func flattenKeepsCropBoxAndRotation() throws {
+        let data = NSMutableData()
+        var box = CGRect(x: 0, y: 0, width: 612, height: 792)
+        let ctx = CGContext(consumer: CGDataConsumer(data: data)!, mediaBox: &box, nil)!
+        ctx.beginPDFPage(nil); ctx.endPDFPage(); ctx.closePDF()
+        let doc = try #require(PDFDocument(data: data as Data))
+        let page = try #require(doc.page(at: 0))
+        let crop = CGRect(x: 100, y: 200, width: 200, height: 200)
+        page.setBounds(crop, for: .cropBox)
+        page.rotation = 90
+        let image = NSImage(size: NSSize(width: 20, height: 20), flipped: false) { r in NSColor.black.setFill(); r.fill(); return true }
+        PDFPageOps.stampImage(image, on: page, bounds: CGRect(x: 120, y: 220, width: 40, height: 40))
+        #expect(PDFPageOps.flattenStamps(in: doc) == 1)
+        let out = try #require(doc.page(at: 0))
+        #expect(out.bounds(for: .cropBox) == crop)
+        #expect(out.bounds(for: .mediaBox).size == CGSize(width: 612, height: 792))
+        #expect(out.rotation == 90)
+        let bytes = try #require(doc.dataRepresentation())
+        let reloaded = try #require(PDFDocument(data: bytes))
+        let reloadedPage = try #require(reloaded.page(at: 0))
+        #expect(reloadedPage.bounds(for: .cropBox).size == crop.size)
+    }
 }

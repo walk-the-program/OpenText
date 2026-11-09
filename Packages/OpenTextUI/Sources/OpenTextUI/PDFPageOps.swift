@@ -110,6 +110,9 @@ public enum PDFPageOps {
             for annotation in page.annotations where !(annotation is ImageStampAnnotation) {
                 if let copy = annotation.copy() as? PDFAnnotation { new.addAnnotation(copy) }
             }
+            // Redrawing yields a fresh page whose crop box is the media box; carry the original boxes over.
+            new.setBounds(page.bounds(for: .mediaBox), for: .mediaBox)
+            new.setBounds(page.bounds(for: .cropBox), for: .cropBox)
             new.rotation = page.rotation
             document.removePage(at: index)
             document.insert(new, at: index)

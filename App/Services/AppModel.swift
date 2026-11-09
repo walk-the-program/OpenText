@@ -210,18 +210,40 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Converts next to the original and reports in the notice window (no auto-open).
+    private var conversionsRunning = 0
+    private var conversionOutputs: [URL] = []
+    private var conversionFailures: [String] = []
+
+    /// Converts next to the original. Several files in a row (Finder multi-select) end in one combined notice
+    /// listing every result (no auto-open).
     func convertInBackground(_ file: URL, to format: String) {
         guard let fmt = DocFormat(name: format) else { return }
         let engine = self.engine
+        conversionsRunning += 1
         Task {
             do {
-                let out = try await Task.detached { try engine.convert(file, to: fmt) }.value
-                let names = out.map(\.lastPathComponent).joined(separator: "\n")
-                showNotice(Notice(title: "Converted", message: names, revealURL: out.first))
+                conversionOutputs += try await Task.detached { try engine.convert(file, to: fmt) }.value
             } catch {
-                showNotice(Notice(title: "Could not convert \(file.lastPathComponent)", message: error.localizedDescription))
+                conversionFailures.append("\(file.lastPathComponent): \(error.localizedDescription)")
             }
+            conversionsRunning -= 1
+            try? await Task.sleep(for: .milliseconds(400))      // let the rest of a multi-select arrive
+            if conversionsRunning == 0 { showConversionSummary() }
         }
+    }
+
+    private func showConversionSummary() {
+        guard !conversionOutputs.isEmpty || !conversionFailures.isEmpty else { return }
+        var lines = conversionOutputs.map(\.lastPathComponent)
+        if !conversionFailures.isEmpty {
+            if !lines.isEmpty { lines.append("") }
+            lines.append("Could not convert:")
+            lines += conversionFailures
+        }
+        let title = conversionFailures.isEmpty ? "Converted"
+            : conversionOutputs.isEmpty ? "Could not convert" : "Converted, with problems"
+        showNotice(Notice(title: title, message: lines.joined(separator: "\n"), revealURL: conversionOutputs.first))
+        conversionOutputs = []
+        conversionFailures = []
     }
 }

@@ -82,12 +82,24 @@ public enum OpenTextTools {
             var opts = ConversionOptions()
             opts.overwrite = trusted && bool(a, "overwrite", default: false)
             opts.ocr = bool(a, "ocr", default: true)
+            // One result per input: {"input", "outputs"} on success, {"input", "error"} on failure.
+            // The call itself fails only when every input failed.
             var results = [[String: Any]]()
             var all = [String]()
+            var firstError: Error?
             for f in inputs {
-                let written = try engine.convert(f, to: to, output: out, options: opts).map(\.path)
-                results.append(["input": f.path, "outputs": written])
-                all += written
+                do {
+                    let written = try engine.convert(f, to: to, output: out, options: opts).map(\.path)
+                    results.append(["input": f.path, "outputs": written])
+                    all += written
+                } catch {
+                    firstError = firstError ?? error
+                    results.append(["input": f.path, "error": (error as? LocalizedError)?.errorDescription ?? "\(error)"])
+                }
+            }
+            if all.isEmpty, let firstError {
+                if inputs.count == 1 { throw firstError }
+                throw ToolError("No files were converted. " + results.compactMap { r in (r["error"] as? String).map { "\((r["input"] as? String).map { ($0 as NSString).lastPathComponent } ?? "?"): \($0)" } }.joined(separator: " "))
             }
             return ["outputs": all, "results": results]
         case "extract_text":
@@ -95,7 +107,13 @@ public enum OpenTextTools {
         case "create_file":
             let f = try format(try required(a, "format"))
             let folder = try string(a, "folder").map(url) ?? OpenTextSettings.load().defaultFolderURL
-            return ["path": try NewFile.create(f, name: string(a, "name") ?? "Untitled", in: folder).path]
+            if !trusted {
+                var isDir: ObjCBool = false
+                guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDir), isDir.boolValue else {
+                    throw ToolError("Folder does not exist: \(folder.path)")
+                }
+            }
+            return ["path": try NewFile.create(f, name: string(a, "name") ?? "Untitled", in: folder, createFolder: trusted).path]
         case "combine_pdfs":
             return ["path": try engine.combinePDFs(try files(a), output: try url(try required(a, "out"))).path]
         case "images_to_pdf":

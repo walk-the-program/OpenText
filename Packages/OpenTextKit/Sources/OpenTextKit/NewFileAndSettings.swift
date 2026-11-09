@@ -1,8 +1,8 @@
 import Foundation
 
 public enum NewFile {
-    /// Creates an empty file (html gets a minimal skeleton) with a unique name. Formats: txt, md, csv, html.
-    public static func create(_ format: DocFormat, name: String = "Untitled", in folder: URL) throws -> URL {
+    /// `createFolder: false` fails instead of creating missing folders. Creates an empty file (html gets a minimal skeleton) with a unique name. Formats: txt, md, csv, html.
+    public static func create(_ format: DocFormat, name: String = "Untitled", in folder: URL, createFolder: Bool = true) throws -> URL {
         let content: String
         switch format {
         case .txt, .md, .csv: content = ""
@@ -12,7 +12,7 @@ public enum NewFile {
         let safeName = name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         let target = Files.unique(folder.appendingPathComponent("\(safeName.isEmpty ? "Untitled" : safeName).\(format.fileExtension)"))
         do {
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            if createFolder { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
             try content.write(to: target, atomically: true, encoding: .utf8)
         } catch {
             throw OpenTextError.writeFailed(target)

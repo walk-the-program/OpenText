@@ -23,20 +23,29 @@ func password(confirm: Bool) throws -> String {
 }
 
 /// Runs a shared tool, prints plain or JSON output, maps errors to stderr + exit 1.
+/// A batch convert where some inputs failed still prints the successes, lists each failure on stderr, and exits 1.
 func run(_ tool: String, _ args: [String: Any], json: Bool) throws {
+    let r: [String: Any]
     do {
-        let r = try OpenTextTools.call(tool, args, trusted: true)
-        if json { print(jsonString(r)); return }
-        if let t = r["text"] as? String { print(t) }
-        else if let o = r["outputs"] as? [String] { o.forEach { print($0) } }
-        else if let p = r["path"] as? String { print(p) }
-        else if let list = r["formats"] as? [[String: Any]] {
-            for f in list { print("\(f["format"] as! String): \((f["targets"] as! [String]).joined(separator: ", "))") }
-        } else if let t = r["targets"] as? [String] { print(t.joined(separator: ", ")) }
+        r = try OpenTextTools.call(tool, args, trusted: true)
     } catch {
         let msg = (error as? LocalizedError)?.errorDescription ?? "\(error)"
         FileHandle.standardError.write(Data((msg + "\n").utf8))
         if json { print(jsonString(["error": msg])) }
+        throw ExitCode(1)
+    }
+    if json { print(jsonString(r)) }
+    else if let t = r["text"] as? String { print(t) }
+    else if let o = r["outputs"] as? [String] { o.forEach { print($0) } }
+    else if let p = r["path"] as? String { print(p) }
+    else if let list = r["formats"] as? [[String: Any]] {
+        for f in list { print("\(f["format"] as! String): \((f["targets"] as! [String]).joined(separator: ", "))") }
+    } else if let t = r["targets"] as? [String] { print(t.joined(separator: ", ")) }
+    let failures = (r["results"] as? [[String: Any]] ?? []).compactMap { x in
+        (x["error"] as? String).map { "\(x["input"] as? String ?? "?"): \($0)" }
+    }
+    if !failures.isEmpty {
+        FileHandle.standardError.write(Data((failures.joined(separator: "\n") + "\n").utf8))
         throw ExitCode(1)
     }
 }

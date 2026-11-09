@@ -341,3 +341,28 @@ final class SecurityFixTests: TempTestCase {
         XCTAssertEqual(MD.escape("a\"b'c"), "a&quot;b&#39;c")
     }
 }
+
+final class BatchAndCreateTests: TempTestCase {
+    func testBatchConvertReportsPerFile() throws {
+        let good = try write("g.txt", "hi")
+        let missing = file("nope.txt")
+        let r = try OpenTextTools.call("convert", ["files": [missing.path, good.path], "to": "md"])
+        let results = r["results"] as! [[String: Any]]
+        XCTAssertEqual(results.count, 2)
+        XCTAssertNotNil(results[0]["error"]); XCTAssertNil(results[0]["outputs"])
+        XCTAssertEqual(results[1]["outputs"] as? [String], [file("g.md").path])
+        XCTAssertEqual(r["outputs"] as? [String], [file("g.md").path])
+        // Every input failing fails the call.
+        XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": [missing.path, file("also.txt").path], "to": "md"]))
+        XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": [missing.path], "to": "md"]))
+    }
+
+    func testCreateFileDoesNotMakeFoldersForUntrusted() throws {
+        let sub = file("a/b")
+        XCTAssertThrowsError(try OpenTextTools.call("create_file", ["format": "txt", "folder": sub.path]))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: file("a").path))
+        let r = try OpenTextTools.call("create_file", ["format": "txt", "folder": sub.path], trusted: true)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: r["path"] as! String))
+        XCTAssertNoThrow(try OpenTextTools.call("create_file", ["format": "md", "folder": sub.path]))
+    }
+}

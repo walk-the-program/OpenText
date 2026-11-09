@@ -1,0 +1,112 @@
+<!doctype html>
+<!-- OpenText look-lock round 1 — a-tile-desk — Document window. Static mock. Dark: ?mode=dark. All colors are CSS variables. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenText — A Tile desk — Document window</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --canvas:#e8eaec; --surface:#fafbfb; --ink:#1c2126; --muted:#63676b; --line:#c9ccce;
+          --primary:#98b0cc; --on-primary:#141414; --accent:#cacd7e; --on-accent:#141414;
+          --pri-press:#7d90a7; --sec-tint:#e7e6e8; --kit-divider:#e4e5e6; --kit-primary-3:#4f5358;
+          --ab-muted:#63676b; --tile-line:rgba(28,33,38,0.08); --kit-checkbox:#707477;
+          --shade:color-mix(in srgb, var(--ink) 15%, transparent);
+          --glow:color-mix(in srgb, var(--surface) 95%, transparent);
+          --scrim:color-mix(in srgb, var(--on-primary) 42%, transparent);
+          --radius-sm:8px; --radius-md:10px; --radius-lg:16px;
+          --font-heading:"Inter Tight", system-ui, sans-serif; --font-body:"Inter", system-ui, sans-serif;
+          --shadow-raised:-2px -2px 5px var(--glow), 3px 4px 10px var(--shade);
+          --shadow-recessed:inset 2px 2px 5px var(--shade), inset -2px -2px 5px var(--glow);
+          --shadow-float:0 0 0 1px var(--tile-line), 6px 14px 36px var(--shade); }
+  :root.dark { --canvas:#252a2e; --surface:#33383c; --ink:#f5f7f9; --muted:#a2a5a8; --line:#44494c;
+          --primary:#98b0cc; --on-primary:#141414; --accent:#cacd7e; --on-accent:#141414;
+          --pri-press:#7d90a7; --sec-tint:#434548; --kit-divider:#464b4f; --kit-primary-3:#e3e5e8;
+          --ab-muted:#dcdee1; --tile-line:rgba(245,247,249,0.1); --kit-checkbox:#abaeb1;
+          --shade:color-mix(in srgb, var(--on-primary) 60%, transparent);
+          --glow:color-mix(in srgb, var(--ink) 7%, transparent); }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--canvas); color:var(--ink); font:400 14px/1.45 var(--font-body);
+              -webkit-font-smoothing:antialiased; overflow:hidden; }
+  button { font:inherit; color:inherit; border:0; margin:0; cursor:default; }
+  .h { font-family:var(--font-heading); font-weight:600; letter-spacing:-0.04em; }
+  .lights { display:flex; gap:8px; }
+  .lights i { width:12px; height:12px; border-radius:50%; background:color-mix(in srgb, var(--ink) 20%, transparent); }
+  .lab { font:600 12px/1 var(--font-body); letter-spacing:-0.01em; color:var(--ab-muted); }
+  .btn-primary { display:inline-flex; align-items:center; justify-content:center; gap:6px; height:32px; padding:0 8px 0 16px;
+                 border-radius:10px; background:var(--primary); color:var(--on-primary); font:600 13px var(--font-body); letter-spacing:-0.01em; }
+  .btn-primary svg { width:18px; height:18px; flex:none; }
+  .btn-primary:active { background:var(--pri-press); }
+  .chip { display:inline-flex; align-items:center; gap:4px; height:24px; padding:0 6px 0 9px; border-radius:9px;
+          background:var(--canvas); box-shadow:var(--shadow-raised); font:600 12px var(--font-body); letter-spacing:-0.01em; color:var(--ink); }
+  .chip svg { width:12px; height:12px; }
+  .btn-sec { display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:10px; background:var(--canvas);
+             box-shadow:var(--shadow-raised); font:600 13px var(--font-body); letter-spacing:-0.01em; color:var(--ink); }
+  .th { display:flex; flex-direction:column; align-items:center; gap:4px; font:600 11px/1 var(--font-body); color:var(--ab-muted); }
+  .th-pg { width:100%; height:80px; border-radius:6px; background:var(--surface); padding:9px 8px; display:flex; flex-direction:column; gap:5px; box-shadow:0 0 0 1px var(--tile-line); }
+  .th-pg u { display:block; height:3px; border-radius:2px; background:var(--line); }
+  .th-pg u:nth-child(1) { width:55%; } .th-pg u:nth-child(4) { width:70%; }
+  .th.sel { color:var(--ink); } .th.sel .th-pg { box-shadow:0 0 0 2px var(--ink); }
+  .doc { font-size:14px; line-height:1.55; color:var(--ink); }
+  .doc .dh { display:flex; justify-content:space-between; color:var(--muted); font-size:0.82em; padding-bottom:0.7em; margin-bottom:1.4em; border-bottom:1px solid var(--line); }
+  .doc h2 { font:600 1.65em/1.2 var(--font-heading); letter-spacing:-0.03em; margin:0 0 0.7em; }
+  .doc p { margin:0 0 0.85em; }
+  .doc b { font-weight:600; }
+  .doc mark { background:var(--accent); color:var(--on-accent); padding:0.05em 0.15em; border-radius:3px; -webkit-box-decoration-break:clone; box-decoration-break:clone; }
+  .doc .df { color:var(--muted); font-size:0.82em; margin-top:1.4em; padding-top:0.7em; border-top:1px solid var(--line); }
+  .status { font:500 12px var(--font-body); color:var(--muted); }
+  /* quick create */
+  .scrim { position:fixed; inset:0; background:var(--scrim); }
+  .menubar { position:fixed; top:0; left:0; right:0; height:28px; z-index:5; display:flex; align-items:center; justify-content:space-between;
+             padding:0 14px; background:var(--surface); box-shadow:0 1px 0 var(--tile-line); font:500 13px var(--font-body); }
+  .menubar .l, .menubar .r { display:flex; align-items:center; gap:18px; }
+  .menubar .l b { font-weight:600; }
+  .mb-item { position:relative; display:inline-flex; align-items:center; justify-content:center; width:28px; height:20px; border-radius:6px; }
+  .mb-item svg { width:15px; height:15px; }
+  .mb-item.on { background:var(--ink); color:var(--canvas); }
+  .seg { display:flex; gap:6px; }
+  .seg span { flex:1; display:flex; align-items:center; justify-content:center; height:32px; border-radius:8px; background:var(--canvas);
+              font:600 13px var(--font-body); letter-spacing:-0.01em; }
+  .seg span.on { background:var(--primary); color:var(--on-primary); }
+  .field { display:flex; align-items:center; height:32px; padding:0 12px; border-radius:8px; background:var(--canvas); box-shadow:var(--shadow-recessed);
+           font:600 14px var(--font-body); letter-spacing:-0.02em; }
+  .link { color:var(--ink); font-weight:600; text-decoration:underline; text-underline-offset:2px; }
+  .hint { font:500 12px var(--font-body); color:var(--muted); }
+
+  .win { height:100vh; display:grid; grid-template-rows:56px 1fr; }
+  .tb { display:flex; align-items:center; gap:14px; padding:0 20px; }
+  .tb .title { font-size:23px; margin-left:8px; }
+  .grid { display:grid; grid-template-columns:188px 1fr 200px; gap:14px; padding:0 14px 14px; min-height:0; }
+  .tile { background:var(--surface); border-radius:16px; box-shadow:var(--shadow-raised); min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+  .tile .lab { padding:18px 18px 0; }
+  .thumbs { display:grid; grid-template-columns:1fr 1fr; gap:14px 12px; padding:14px 18px 18px; }
+  .pg { padding:40px 56px 0; flex:1; min-height:0; overflow:hidden; display:flex; justify-content:center; }
+  .pg .doc { max-width:560px; }
+  .pgfoot { text-align:center; padding:14px; }
+  .tools { padding:14px 18px 0; display:flex; flex-direction:column; gap:10px; }
+  .tools .btn-sec { width:100%; }
+  .spacer { flex:1; }
+  .conv { padding:18px; } .conv .btn-primary { width:100%; }
+
+</style>
+<script>if (location.search.includes("mode=dark")) document.documentElement.classList.add("dark");</script>
+
+<div class="win">
+  <div class="tb"><div class="lights"><i></i><i></i><i></i></div><span class="title h">Q3-lease</span><span class="chip">.pdf<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg></span></div>
+  <div class="grid">
+    <section class="tile"><div class="lab">Pages</div><div class="thumbs"><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>1</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>2</span></div><div class="th sel"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>3</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>4</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>5</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>6</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>7</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>8</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>9</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>10</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>11</span></div><div class="th"><div class="th-pg"><u></u><u></u><u></u><u></u></div><span>12</span></div></div></section>
+    <section class="tile"><div class="pg"><div class="doc">
+  <div class="dh"><span>Residential Lease Agreement</span><span>Maple Court Holdings LLC · 418 Alder Street, Unit 2B</span></div>
+  <h2>3. Rent and Deposit</h2>
+  <p><b>3.1 Monthly Rent.</b> Tenant shall pay Landlord rent of $2,400.00 per month, due on or before the first day of each month, beginning January 1, 2026, and ending with the payment due December 1, 2026.</p>
+  <p><b>3.2 Late Charge.</b> Rent received after the fifth (5th) day of the month carries a late charge of $75.00, plus $10.00 for each additional day until paid in full.</p>
+  <p><b>3.3 Security Deposit.</b> <mark>Tenant shall pay a security deposit of $2,400.00 at signing, to be held in a separate account until the Lease ends.</mark> The deposit is not a limit on Tenant's liability and may not be applied as the final month's rent.</p>
+  <p><b>3.4 Return of Deposit.</b> Within thirty (30) days after Tenant vacates the Premises, Landlord shall return the deposit with an itemized list of lawful deductions, no later than January 30, 2027.</p>
+  <p><b>3.5 Payment Method.</b> Rent is payable by bank transfer or by check made out to Maple Court Holdings LLC. Cash is not accepted.</p>
+  <p><b>3.6 Rent During the Term.</b> Rent shall not increase before the Lease ends on December 31, 2026.</p>
+  <div class="df">Initials ______ ______ · Page 3 of 12</div>
+</div></div><div class="pgfoot status">Page 3 of 12</div></section>
+    <section class="tile"><div class="lab">Tools</div><div class="tools"><button class="btn-sec">Highlight</button><button class="btn-sec">Sign</button><button class="btn-sec">Rotate</button><button class="btn-sec">Search</button><button class="btn-sec">Zoom</button></div><div class="spacer"></div>
+      <div class="conv"><button class="btn-primary">Convert<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 16 16 8M9.5 8H16v6.5"/></svg></button></div></section>
+  </div>
+</div>

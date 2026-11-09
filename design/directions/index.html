@@ -1,0 +1,41 @@
+<!doctype html>
+<!-- design/directions/index.html. Round 1 board: one card per direction. Dark via ?mode=dark on each screen link. -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OpenText — Directions, round 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --canvas:#e8eaec; --surface:#fafbfb; --ink:#1c2126; --muted:#63676b; --line:#c9ccce; --tile-line:rgba(28,33,38,0.08); }
+  :root.dark { --canvas:#252a2e; --surface:#33383c; --ink:#f5f7f9; --muted:#a2a5a8; --line:#44494c; --tile-line:rgba(245,247,249,0.1); }
+  * { box-sizing:border-box; }
+  body { font:400 15px/1.45 Inter, system-ui, sans-serif; margin:0; padding:32px; background:var(--canvas); color:var(--ink); }
+  h1 { font:600 28px/1.2 "Inter Tight", system-ui, sans-serif; letter-spacing:-0.04em; margin:0 0 4px; }
+  .sub { color:var(--muted); margin:0 0 24px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(340px, 1fr)); gap:16px; }
+  .card { background:var(--surface); border-radius:16px; padding:20px; }
+  h2 { font:600 20px/1.2 "Inter Tight", system-ui, sans-serif; letter-spacing:-0.03em; margin:0 0 6px; }
+  p { margin:0 0 14px; color:var(--muted); }
+  img { display:block; width:100%; height:auto; border-radius:8px; box-shadow:0 0 0 1px var(--tile-line); margin-bottom:8px; }
+  .links { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  a { padding:8px 12px; border:1px solid var(--ink); border-radius:8px; color:var(--ink); text-decoration:none; font-weight:500; font-size:13px; }
+</style>
+<script>if (location.search.includes("mode=dark")) document.documentElement.classList.add("dark");</script>
+<h1>OpenText — Round 1</h1>
+<p class="sub">Three window layouts, same palette, type and materials. Screens at 1280 x 800; PNGs also at 1512 x 982.</p>
+<div class="grid">
+<div class="card"><h2>A. Tile desk</h2><p>Every region (pages, page, tools) sits in its own raised tile with 14px gaps; airy, most visibly the pack. Quick create is a raised tile centred on screen.</p>
+  <a href="a-tile-desk/screen1.html"><img src="a-tile-desk/screen1-light-1280.png" alt="A. Tile desk document window"></a>
+  <a href="a-tile-desk/screen2.html"><img src="a-tile-desk/screen2-light-1280.png" alt="A. Tile desk quick create"></a>
+  <div class="links"><a href="a-tile-desk/screen1.html">Document</a><a href="a-tile-desk/screen1.html?mode=dark">Document dark</a>
+  <a href="a-tile-desk/screen2.html">Quick create</a><a href="a-tile-desk/screen2.html?mode=dark">Quick create dark</a></div></div>
+<div class="card"><h2>B. Native quiet</h2><p>Mac-native chrome: unified toolbar, recessed sidebar well, document edge to edge; densest. Quick create drops from the menu bar item as a popover.</p>
+  <a href="b-native-quiet/screen1.html"><img src="b-native-quiet/screen1-light-1280.png" alt="B. Native quiet document window"></a>
+  <a href="b-native-quiet/screen2.html"><img src="b-native-quiet/screen2-light-1280.png" alt="B. Native quiet quick create"></a>
+  <div class="links"><a href="b-native-quiet/screen1.html">Document</a><a href="b-native-quiet/screen1.html?mode=dark">Document dark</a>
+  <a href="b-native-quiet/screen2.html">Quick create</a><a href="b-native-quiet/screen2.html?mode=dark">Quick create dark</a></div></div>
+<div class="card"><h2>C. Command strip</h2><p>No sidebar at rest; the document fills the window and one floating recessed pill holds format, tools and Convert (⌘T for thumbnails). Quick create is a centred command bar.</p>
+  <a href="c-command-strip/screen1.html"><img src="c-command-strip/screen1-light-1280.png" alt="C. Command strip document window"></a>
+  <a href="c-command-strip/screen2.html"><img src="c-command-strip/screen2-light-1280.png" alt="C. Command strip quick create"></a>
+  <div class="links"><a href="c-command-strip/screen1.html">Document</a><a href="c-command-strip/screen1.html?mode=dark">Document dark</a>
+  <a href="c-command-strip/screen2.html">Quick create</a><a href="c-command-strip/screen2.html?mode=dark">Quick create dark</a></div></div>
+</div>

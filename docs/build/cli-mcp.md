@@ -26,7 +26,7 @@ Password for `lock`/`unlock`: environment variable `OPENTEXT_PASSWORD`, otherwis
 
 Formats: txt md rtf html docx doc odt csv json pdf png jpg heic tiff gif webp otlock. webp is read-only (ImageIO cannot write it), so converting to webp is reported as unsupported. `otlock` is only produced by `lock`.
 
-Example JSON result from `convert`: `{"outputs": ["/path/a.html"], "results": [{"input": "/path/a.md", "outputs": ["/path/a.html"]}]}`.
+Example JSON result from `convert`: `{"outputs": ["/path/a.html"], "results": [{"input": "/path/a.md", "outputs": ["/path/a.html"]}, {"input": "/path/b.md", "error": "…"}]}`. Each input gets its own entry, in order, with `outputs` or `error`. The call fails only if every input failed. The CLI prints successes to stdout and each failure to stderr as `input: message`, and exits 1 if any input failed.
 
 ## MCP server: `opentext-mcp`
 
@@ -34,9 +34,9 @@ stdio transport, JSON-RPC 2.0, built on the official MCP Swift SDK (protocol ver
 
 | Tool | Arguments (required in bold) |
 |---|---|
-| `convert` | **files** (string[]), **to**, out, overwrite, ocr |
+| `convert` | **files** (string[]), **to**, out, ocr (never overwrites; `overwrite` is CLI-only) |
 | `extract_text` | **file**, ocr |
-| `create_file` | **format** (txt/md/csv/html), name, folder |
+| `create_file` | **format** (txt/md/csv/html), name, folder (must already exist) |
 | `combine_pdfs` | **files**, **out** |
 | `images_to_pdf` | **files**, **out** |
 | `list_formats` | format |
@@ -69,7 +69,7 @@ Passwords for `lock_file`/`unlock_file` are tool arguments, so they appear in th
 
 ## Safety rules (engine-enforced)
 
-- Output paths: a destination that is an existing folder is refused, and its extension must match the target format (`out: ~/.zshrc` or `out: ~/Documents` fails with an error). `overwrite` replaces an existing file atomically (staged in the destination folder, then `replaceItemAt`), so a failed write keeps the old file.
+- Output paths: a destination that is an existing folder is refused, and its extension must match the target format (`out: ~/.zshrc` or `out: ~/Documents` fails with an error). `overwrite` (CLI only) replaces an existing file atomically (staged in the destination folder, then `replaceItemAt`), so a failed write keeps the old file.
 - MCP: `out`, `file` and `files` must be absolute or start with `~`; relative paths are rejected. `lock_file` has no `recovery_public_key` or `remove_original` argument: it always uses the recovery key from settings and never deletes the original. The CLI (run by a human) keeps `--remove-original` and relative paths.
 - `opentext lock --remove-original` decrypts the written .otlock in memory and compares bytes before moving the original to the Trash. If the Trash move fails, the command errors (`originalNotRemoved`) and the .otlock stays.
 - `OPENTEXT_PASSWORD` is visible to other processes of the same user (environment, `ps eww`). Prefer the no-echo prompt.

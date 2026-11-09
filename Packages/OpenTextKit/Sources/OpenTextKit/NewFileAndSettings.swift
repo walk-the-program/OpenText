@@ -21,7 +21,7 @@ public enum NewFile {
     }
 }
 
-public struct OpenTextSettings: Codable, Sendable {
+public struct OpenTextSettings: Codable, Equatable, Sendable {
     public var defaultFolder: String = "~/Desktop"
     public var hotkey: String = "ctrl+opt+n"
     public var recoveryPublicKey: String? = nil

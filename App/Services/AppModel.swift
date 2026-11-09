@@ -4,14 +4,6 @@ import OpenTextKit
 import OpenTextUI
 import OpenTextAppLogic
 
-extension OpenTextSettings {
-    func same(as o: OpenTextSettings) -> Bool {
-        defaultFolder == o.defaultFolder && hotkey == o.hotkey && recoveryPublicKey == o.recoveryPublicKey
-            && useTouchID == o.useTouchID && txtMonospace == o.txtMonospace && lastNewFileFormat == o.lastNewFileFormat
-            && setupShown == o.setupShown
-    }
-}
-
 /// A message shown in the small "notice" window (result of a Finder-initiated action, or an error).
 struct Notice: Identifiable {
     let id = UUID()
@@ -85,7 +77,7 @@ final class AppModel: ObservableObject {
     func update(_ change: (inout OpenTextSettings) -> Void) {
         var s = settings
         change(&s)
-        guard !s.same(as: settings) else { return }
+        guard s != settings else { return }
         let hotkeyChanged = s.hotkey != settings.hotkey
         settings = s
         do { try s.save() } catch { notice = Notice(title: "Settings not saved", message: error.localizedDescription) }
@@ -106,7 +98,7 @@ final class AppModel: ObservableObject {
 
     private func reloadSettingsFromDisk() {
         let s = OpenTextSettings.load()
-        guard !s.same(as: settings) else { return }
+        guard s != settings else { return }
         settings = s
         syncHotkeyFromFile()
     }

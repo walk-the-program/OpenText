@@ -145,6 +145,7 @@ struct WindowCloseGuard: NSViewRepresentable {
         func attach(to w: NSWindow?) {
             guard let w, w !== window else { return }
             window = w
+            session.window = w
             if w.delegate !== self { original = w.delegate; w.delegate = self }
             session.commands.onDirtyChange = { [weak w] dirty in w?.isDocumentEdited = dirty }
         }
@@ -159,26 +160,15 @@ struct WindowCloseGuard: NSViewRepresentable {
 
         func windowShouldClose(_ sender: NSWindow) -> Bool {
             if bypass || !session.hasUnsavedChanges { return original?.windowShouldClose?(sender) ?? true }
-            let alert = NSAlert()
-            alert.messageText = "Save changes to \(session.title)?"
-            alert.informativeText = "Your changes will be lost if you don't save them."
-            alert.addButton(withTitle: "Save")
-            alert.addButton(withTitle: "Don't Save")
-            alert.addButton(withTitle: "Cancel")
-            alert.beginSheetModal(for: sender) { [weak self] response in
-                guard let self else { return }
-                switch response {
-                case .alertFirstButtonReturn:
-                    Task { @MainActor in
-                        if await self.session.saveBeforeClosing() { self.bypass = true; sender.close() }
-                    }
-                case .alertSecondButtonReturn:
-                    self.bypass = true
-                    sender.close()
-                default: break
-                }
+            Task { @MainActor in
+                if await self.session.confirmClose() { self.bypass = true; sender.close() }
             }
             return false
+        }
+
+        func windowWillClose(_ notification: Notification) {
+            session.unregister()
+            original?.windowWillClose?(notification)
         }
     }
 }

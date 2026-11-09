@@ -72,10 +72,23 @@ final class DocumentSession: ObservableObject {
     private var pendingNotice: Notice?
     private let engine = ConversionEngine()
 
+    /// Every open document window's session (weak: a closed window's session drops out).
+    private struct Weak { weak var session: DocumentSession? }
+    private static var registry: [Weak] = []
+    static var openSessions: [DocumentSession] {
+        registry.removeAll { $0.session == nil }
+        return registry.compactMap(\.session)
+    }
+    /// The window showing this session, set by the close guard.
+    weak var window: NSWindow?
+
     init(url: URL) {
         self.url = url
+        Self.registry.append(Weak(session: self))
         load()
     }
+
+    func unregister() { Self.registry.removeAll { $0.session == nil || $0.session === self } }
 
     var inMemory: Bool { memoryName != nil }
     private var effectiveName: URL { URL(fileURLWithPath: memoryName ?? url.lastPathComponent) }
@@ -405,9 +418,36 @@ final class DocumentSession: ObservableObject {
         }
     }
 
-    // MARK: window close
+    // MARK: window close and quit
 
-    func saveBeforeClosing() async -> Bool { await save() }
+    /// Saves pending text edits now (used on quit, before deciding whether anything is still unsaved).
+    func flushAutosave() async {
+        guard !inMemory, !isReadOnly, case .text = content, !isSaved else { return }
+        await save(interactive: false)
+    }
+
+    /// Save / Don't Save / Cancel for a document with unsaved changes. True when it is fine to close or quit.
+    func confirmClose() async -> Bool {
+        guard hasUnsavedChanges else { return true }
+        let alert = NSAlert()
+        alert.messageText = "Save changes to \(title)?"
+        alert.informativeText = "Your changes will be lost if you don't save them."
+        alert.addButton(withTitle: "Save")
+        alert.addButton(withTitle: "Don't Save")
+        alert.addButton(withTitle: "Cancel")
+        let response: NSApplication.ModalResponse
+        if let window, window.isVisible {
+            window.makeKeyAndOrderFront(nil)
+            response = await withCheckedContinuation { c in alert.beginSheetModal(for: window) { c.resume(returning: $0) } }
+        } else {
+            response = await runAlert(alert)
+        }
+        switch response {
+        case .alertFirstButtonReturn: return await save()
+        case .alertSecondButtonReturn: return true
+        default: return false
+        }
+    }
 
     // MARK: changed outside
 

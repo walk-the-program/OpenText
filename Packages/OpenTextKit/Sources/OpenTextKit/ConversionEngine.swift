@@ -11,6 +11,8 @@ public struct ConversionEngine: Sendable {
         for f in [DocFormat.txt, .md, .rtf, .html, .docx, .doc, .odt] {
             t[f] = richTargets.filter { $0 != f }
         }
+        // rtfd packages are read-only sources: convertible out, never a target.
+        t[.rtfd] = [.txt, .md, .rtf, .html, .docx, .doc, .odt, .pdf]
         t[.csv] = [.txt, .pdf]
         t[.json] = [.txt, .pdf]
         t[.pdf] = [.txt, .md, .png, .jpg]
@@ -150,7 +152,7 @@ public struct ConversionEngine: Sendable {
         switch from {
         case .txt, .md, .csv, .json:
             return try Files.readText(input)
-        case .rtf, .html, .docx, .doc, .odt:
+        case .rtf, .rtfd, .html, .docx, .doc, .odt:
             return try Files.withTempDir { dir in
                 let out = dir.appendingPathComponent("out.txt")
                 try Textutil.convert(input, to: "txt", output: out)

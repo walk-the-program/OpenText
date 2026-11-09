@@ -2,7 +2,7 @@ import Foundation
 import UniformTypeIdentifiers
 
 public enum DocFormat: String, CaseIterable, Codable, Sendable {
-    case txt, md, rtf, html, docx, doc, odt, csv, json, pdf, png, jpg, heic, tiff, gif, webp, otlock
+    case txt, md, rtf, rtfd, html, docx, doc, odt, csv, json, pdf, png, jpg, heic, tiff, gif, webp, otlock
 
     /// The single extension table: every accepted spelling (lowercase) and the format it means.
     private static let aliases: [String: DocFormat] = {
@@ -32,8 +32,8 @@ public enum DocFormat: String, CaseIterable, Codable, Sendable {
 
     public var fileExtension: String { rawValue }
 
-    /// Document formats (txt, md, rtf, html, docx, doc, odt, csv, json).
-    public static let textFormats: Set<DocFormat> = [.txt, .md, .rtf, .html, .docx, .doc, .odt, .csv, .json]
+    /// Document formats (txt, md, rtf, rtfd, html, docx, doc, odt, csv, json).
+    public static let textFormats: Set<DocFormat> = [.txt, .md, .rtf, .rtfd, .html, .docx, .doc, .odt, .csv, .json]
     /// Raster image formats, including read-only webp.
     public static let imageFormats: Set<DocFormat> = [.png, .jpg, .heic, .tiff, .gif, .webp]
     /// Image formats the engine can write (everything in `imageFormats` except webp).

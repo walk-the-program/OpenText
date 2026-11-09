@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import PDFKit
 import UniformTypeIdentifiers
@@ -19,6 +20,24 @@ final class ConversionTests: TempTestCase {
         XCTAssertEqual(DocFormat.writableImageFormats, Set(DocFormat.imageFormats.filter { $0.imageUTType != nil }))
         XCTAssertEqual(DocFormat.imageFormats.subtracting(DocFormat.writableImageFormats), [.webp])
         XCTAssertTrue(DocFormat.docx.isText); XCTAssertTrue(DocFormat.heic.isImage); XCTAssertFalse(DocFormat.pdf.isText)
+    }
+
+    // rtfd packages (directories) convert out like rtf and are never a target.
+    func testRtfdSource() throws {
+        let attr = NSAttributedString(string: "Packaged hello.\n\nSecond bit.\n")
+        let wrapper = try XCTUnwrap(attr.rtfdFileWrapper(from: NSRange(location: 0, length: attr.length)))
+        let pkg = dir.appendingPathComponent("doc.rtfd")
+        try wrapper.write(to: pkg, options: [], originalContentsURL: nil)
+        XCTAssertEqual(DocFormat(url: pkg), .rtfd)
+        XCTAssertTrue(DocFormat.rtfd.isText)
+        XCTAssertFalse(engine.targets(from: .txt).contains(.rtfd))
+        let txt = try engine.convert(pkg, to: .txt)[0]
+        XCTAssertTrue(try read(txt).contains("Packaged hello."))
+        let html = try engine.convert(pkg, to: .html)[0]
+        XCTAssertTrue(try read(html).contains("Packaged hello."))
+        let pdf = try engine.convert(pkg, to: .pdf)[0]
+        XCTAssertNotNil(PDFDocument(url: pdf))
+        XCTAssertTrue(try engine.extractText(pkg).contains("Second bit."))
     }
 
     // txt <-> md <-> rtf <-> html

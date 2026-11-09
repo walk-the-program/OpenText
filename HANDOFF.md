@@ -1,5 +1,21 @@
 # Handoff log
 
+## 2026-11-09 · UI polish pass and full code audit
+
+**Did:**
+- UI pass (`docs/review/2026-11-09-ui/findings.md`, status table at the end): Edit/Preview is one control; blue only on each screen's main button (selection is ink); title tracking loosened for Inter Tight (-0.02em ≥22pt, -0.01em below); control-sized shadows on chips and buttons, flat when disabled; softer recessed fields; convert and recovery sheets match the other sheets; setup fits its real 900×440 window. Commits UI-001 to UI-010.
+- Full audit (`docs/review/2026-11-09-audit.md`), 20 findings, 19 fixed (commits `AUD-…`): MCP can no longer overwrite files; ⌘Q asks Save / Don't Save / Cancel; text saves keep BOM and encoding and ask before switching to UTF-8; open/save run off the main thread, text over 20 MB opens read-only; editor restyles only the edited paragraph; locking avoids extra copies and refuses files over 2 GB; saves keep Finder tags; image save keeps EXIF, refuses animated GIFs; File ▸ Revert to Saved; images→PDF embeds the compressed photo; Markdown→HTML drops unsafe links; password-protected PDFs get a password prompt; per-file batch convert results; dead code removed.
+- `docs/build/cli-mcp.md` updated for the new convert result shape and MCP limits.
+
+**Verified:** `swift test`: OpenTextKit 47, OpenTextDesign 3, OpenTextUI 43, App/Logic 28 — all pass. Signed Release build succeeds; `build/OpenText.app` refreshed and passes `codesign --verify --deep --strict`. All screens re-rendered off-screen and checked. App still not launched, so every runtime item listed at the end of the audit file is unverified.
+
+**Decided:**
+- Selection uses ink, primary only on the one main action (BUILD-PACK rule 2 over the kit table's "selected segment = primary").
+- Heading tracking looser than the kit's CSS values: the bundled Inter Tight has no optical-size axis, so -0.03/-0.04em made letters touch.
+- Lock format unchanged; a chunked v2 format for very large files and a stable Touch ID Keychain id (audit 20) are format decisions left for Walker.
+
+**Next:** Walker opens `build/OpenText.app` and runs through the "Needs the first real launch" list in `docs/review/2026-11-09-audit.md`, starting with ⌘Q on an edited PDF. Nothing is blocking it.
+
 ## 2026-11-08 (late) · Signed build after Xcode sign-in
 
 **Did:** Signed Debug and Release builds after Walker signed in to Xcode; `-allowProvisioningDeviceRegistration` registered this Mac and created the profiles. Copied the Release app to `build/OpenText.app` (git-ignored). Added the signed build command to `docs/build/app.md`; cleared the sign-in row in `docs/product/owner-blockers.md`.

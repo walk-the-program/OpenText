@@ -32,9 +32,9 @@ extension View {
             .recessedSurface(radius: Brand.Radius.field)
     }
 
-    /// Title style: Inter display SemiBold, tracking -0.04em from 22pt up and -0.03em below (letters collide otherwise).
+    /// Title style: Inter display SemiBold, tracking -0.02em from 22pt up and -0.01em below (Inter Tight is already tight; the kit CSS values make letters touch in CoreText).
     public func brandHeading(_ size: CGFloat = Brand.Fonts.headingSize) -> some View {
-        font(Brand.Fonts.heading(size)).tracking((size >= 22 ? -0.04 : -0.03) * size).foregroundStyle(Brand.Palette.ink)
+        font(Brand.Fonts.heading(size)).tracking((size >= 22 ? -0.02 : -0.01) * size).foregroundStyle(Brand.Palette.ink)
     }
 
     /// Small section label (12pt, semibold, abMuted).

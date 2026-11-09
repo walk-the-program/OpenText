@@ -12,6 +12,13 @@ public struct RecoveryKey: Sendable {
 
     init(privateKeyData: Data) { self.privateKeyData = privateKeyData }
 
+    /// First 8 bytes of SHA-256 of the raw public key, hex, 4 groups ("3fa2-91bc-0d44-7e10"). nil if not a valid key.
+    public static func fingerprint(publicKeyBase64: String) -> String? {
+        guard let raw = Data(base64Encoded: publicKeyBase64), raw.count == 32 else { return nil }
+        let hex = SHA256.hash(data: raw).prefix(8).map { String(format: "%02x", $0) }.joined()
+        return stride(from: 0, to: 16, by: 4).map { i in String(hex.dropFirst(i).prefix(4)) }.joined(separator: "-")
+    }
+
     /// Tolerant of spaces, dashes and case.
     public init?(displayString: String) {
         let cleaned = displayString.uppercased().filter { $0.isLetter || $0.isNumber }
@@ -114,7 +121,12 @@ public enum Locker {
         let dest = Files.unique(output ?? input.appendingPathExtension("otlock"))
         try lock(data: content, originalName: input.lastPathComponent, password: password, recoveryPublicKeyBase64: recoveryPublicKeyBase64, output: dest)
         if removeOriginal {
-            try? FileManager.default.trashItem(at: input, resultingItemURL: nil)
+            // Verify the locked file decrypts to the same bytes before the original goes away.
+            guard let check = try? decrypt(dest, password: password), check.data == content else {
+                try? FileManager.default.removeItem(at: dest)
+                throw OpenTextError.writeFailed(dest)
+            }
+            do { try FileManager.default.trashItem(at: input, resultingItemURL: nil) } catch { throw OpenTextError.originalNotRemoved(input) }
         }
         return dest
     }
@@ -177,7 +189,7 @@ public enum Locker {
         guard data.count >= 9 + len + 16 else { throw OpenTextError.corruptLockedFile }
         let headerJSON = data[9..<(9 + len)]
         guard let header = try? JSONDecoder().decode(Header.self, from: headerJSON), header.version == 1,
-              header.password.iterations > 0, header.password.iterations <= 100_000_000 else { throw OpenTextError.corruptLockedFile }
+              (600_000...10_000_000).contains(header.password.iterations) else { throw OpenTextError.corruptLockedFile }
         return Parsed(header: header, prefix: Data(data[0..<(9 + len)]), body: Data(data[(9 + len)...]))
     }
 

@@ -33,6 +33,7 @@ public struct ConversionEngine: Sendable {
         guard targets(from: from).contains(to) else { throw OpenTextError.unsupportedConversion(from: from, to: to) }
         let base = output ?? input.deletingPathExtension().appendingPathExtension(to.fileExtension)
 
+        try Files.checkDestination(base, format: to)
         if from == .pdf, to.isImage {
             return try pdfToImages(input, to: to, base: base, explicit: output != nil, options: options)
         }
@@ -174,6 +175,7 @@ public struct ConversionEngine: Sendable {
                 merged.insert(page, at: merged.pageCount)
             }
         }
+        try Files.checkDestination(output, format: .pdf)
         let dest = Files.unique(output)
         try Files.withTempDir { dir in
             let tmp = dir.appendingPathComponent("out.pdf")
@@ -184,6 +186,7 @@ public struct ConversionEngine: Sendable {
     }
 
     public func imagesToPDF(_ inputs: [URL], output: URL) throws -> URL {
+        try Files.checkDestination(output, format: .pdf)
         let dest = Files.unique(output)
         try Files.withTempDir { dir in
             let tmp = dir.appendingPathComponent("out.pdf")

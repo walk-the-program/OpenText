@@ -54,11 +54,12 @@ private struct HTMLVisitor: MarkupVisitor {
     mutating func visitThematicBreak(_ t: ThematicBreak) -> String { "<hr>\n" }
     mutating func visitLineBreak(_ l: LineBreak) -> String { "<br>\n" }
     mutating func visitSoftBreak(_ s: SoftBreak) -> String { "\n" }
-    mutating func visitInlineHTML(_ h: InlineHTML) -> String { h.rawHTML }
-    mutating func visitHTMLBlock(_ h: HTMLBlock) -> String { h.rawHTML }
+    mutating func visitInlineHTML(_ h: InlineHTML) -> String { Markdown_escape(h.rawHTML) }
+    mutating func visitHTMLBlock(_ h: HTMLBlock) -> String { "<p>\(Markdown_escape(h.rawHTML.trimmingCharacters(in: .newlines)))</p>\n" }
     mutating func visitLink(_ l: Link) -> String { "<a href=\"\(Markdown_escape(l.destination ?? ""))\">\(children(l))</a>" }
     mutating func visitImage(_ i: Image) -> String {
-        "<img src=\"\(Markdown_escape(i.source ?? ""))\" alt=\"\(Markdown_escape(i.plainText))\">"
+        // Never emit <img>: conversion must not fetch remote or file:// resources.
+        Markdown_escape(i.plainText.isEmpty ? (i.source ?? "") : i.plainText)
     }
     mutating func visitUnorderedList(_ l: UnorderedList) -> String { "<ul>\n\(children(l))</ul>\n" }
     mutating func visitOrderedList(_ l: OrderedList) -> String { "<ol>\n\(children(l))</ol>\n" }

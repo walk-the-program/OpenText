@@ -65,6 +65,8 @@ public enum OpenTextError: Error, LocalizedError, Equatable {
     case notLocked
     case noRecoveryKeyConfigured
     case invalidRecoveryKey
+    case originalNotRemoved(URL)
+    case destinationNotAllowed(URL, String)
 
     public var errorDescription: String? {
         switch self {
@@ -76,6 +78,8 @@ public enum OpenTextError: Error, LocalizedError, Equatable {
         case .notLocked: return "That file is not a locked OpenText file."
         case .noRecoveryKeyConfigured: return "This file has no recovery key slot."
         case .invalidRecoveryKey: return "The recovery key does not unlock this file."
+        case let .originalNotRemoved(url): return "The locked file was written, but the original could not be moved to the Trash: \(url.path)."
+        case let .destinationNotAllowed(url, why): return "Refusing to write \(url.path): \(why)."
         }
     }
 }
@@ -114,12 +118,37 @@ enum Files {
         return try body(dir)
     }
 
-    /// Moves `tmp` to `dest`, replacing an existing file.
+    /// Throws unless `dest` is a legal output for `format`: not an existing directory, extension matches the format.
+    static func checkDestination(_ dest: URL, format: DocFormat) throws {
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: dest.path, isDirectory: &isDir), isDir.boolValue {
+            throw OpenTextError.destinationNotAllowed(dest, "it is a folder")
+        }
+        guard DocFormat(url: dest) == format else {
+            throw OpenTextError.destinationNotAllowed(dest, "the file extension must be .\(format.fileExtension)")
+        }
+    }
+
+    /// Moves `tmp` to `dest`. Never removes a directory. An existing file is replaced atomically
+    /// (staged in the destination folder, then replaceItemAt), so a failure keeps the old file.
     static func place(_ tmp: URL, _ dest: URL) throws {
         let fm = FileManager.default
+        var isDir: ObjCBool = false
+        let exists = fm.fileExists(atPath: dest.path, isDirectory: &isDir)
+        if exists, isDir.boolValue { throw OpenTextError.destinationNotAllowed(dest, "it is a folder") }
         do {
-            if fm.fileExists(atPath: dest.path) { try fm.removeItem(at: dest) }
-            try fm.moveItem(at: tmp, to: dest)
+            if exists {
+                let staged = dest.deletingLastPathComponent().appendingPathComponent(".opentext-\(UUID().uuidString).tmp")
+                do {
+                    try fm.copyItem(at: tmp, to: staged)
+                    _ = try fm.replaceItemAt(dest, withItemAt: staged)
+                } catch {
+                    try? fm.removeItem(at: staged)
+                    throw error
+                }
+            } else {
+                try fm.moveItem(at: tmp, to: dest)
+            }
         } catch {
             throw OpenTextError.writeFailed(dest)
         }

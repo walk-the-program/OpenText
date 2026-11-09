@@ -31,9 +31,8 @@ public enum OpenTextTools {
              "inputSchema": obj(["files": arr("Image paths"), "out": str("Output PDF path")], required: ["files", "out"])],
             ["name": "list_formats", "description": "List supported formats and what each converts to. Pass format for one entry.",
              "inputSchema": obj(["format": s])],
-            ["name": "lock_file", "description": "Encrypt any file into a .otlock file (AES-256-GCM, PBKDF2 600k). Adds the recovery slot from the configured recovery public key unless recovery_public_key is given. remove_original moves the original to the Trash.",
-             "inputSchema": obj(["file": str("File to lock"), "password": s, "out": str("Output path"), "remove_original": b,
-                                 "recovery_public_key": str("Base64 Curve25519 public key (default: from settings)")], required: ["file", "password"])],
+            ["name": "lock_file", "description": "Encrypt any file into a .otlock file (AES-256-GCM, PBKDF2 600k). Adds the recovery slot from the recovery public key in settings. The original is kept.",
+             "inputSchema": obj(["file": str("File to lock"), "password": s, "out": str("Output path")], required: ["file", "password"])],
             ["name": "unlock_file", "description": "Decrypt a .otlock file with the password or the recovery key. Restores the original file name.",
              "inputSchema": obj(["file": str("The .otlock file"), "password": s, "recovery_key": str("Recovery key string, e.g. ABCD-EFGH-..."), "out": str("Output path")], required: ["file"])],
         ]
@@ -42,6 +41,12 @@ public enum OpenTextTools {
     // MARK: argument access
 
     static func url(_ p: String) -> URL { URL(fileURLWithPath: (p as NSString).expandingTildeInPath) }
+    /// Strict path parsing for untrusted callers: expands "~", rejects relative paths.
+    static func absoluteURL(_ p: String) throws -> URL {
+        let e = (p as NSString).expandingTildeInPath
+        guard e.hasPrefix("/") else { throw ToolError("Path must be absolute (or start with ~): \(p)") }
+        return URL(fileURLWithPath: e)
+    }
     static func string(_ a: [String: Any], _ k: String) -> String? { (a[k] as? String).flatMap { $0.isEmpty ? nil : $0 } }
     static func bool(_ a: [String: Any], _ k: String, default d: Bool) -> Bool { (a[k] as? Bool) ?? d }
     static func required(_ a: [String: Any], _ k: String) throws -> String {
@@ -59,13 +64,20 @@ public enum OpenTextTools {
 
     // MARK: dispatch
 
-    public static func call(_ name: String, _ a: [String: Any]) throws -> [String: Any] {
+    /// `trusted` is true only for the human-run CLI: relative paths allowed, `remove_original` and `recovery_public_key` honored.
+    /// The MCP server uses the default (untrusted): absolute or "~" paths only, locks always use the settings key and never delete the original.
+    public static func call(_ name: String, _ a: [String: Any], trusted: Bool = false) throws -> [String: Any] {
         let engine = ConversionEngine()
+        let url: (String) throws -> URL = { trusted ? OpenTextTools.url($0) : try OpenTextTools.absoluteURL($0) }
+        func files(_ a: [String: Any]) throws -> [URL] {
+            guard let list = a["files"] as? [String], !list.isEmpty else { throw ToolError("Missing required argument 'files'.") }
+            return try list.map(url)
+        }
         switch name {
         case "convert":
             let inputs = try files(a)
             let to = try format(try required(a, "to"))
-            let out = string(a, "out").map(url)
+            let out = try string(a, "out").map(url)
             if out != nil, inputs.count > 1 { throw ToolError("'out' can only be used with a single input file.") }
             var opts = ConversionOptions()
             opts.overwrite = bool(a, "overwrite", default: false)
@@ -79,15 +91,15 @@ public enum OpenTextTools {
             }
             return ["outputs": all, "results": results]
         case "extract_text":
-            return ["text": try engine.extractText(url(try required(a, "file")), ocr: bool(a, "ocr", default: true))]
+            return ["text": try engine.extractText(try url(try required(a, "file")), ocr: bool(a, "ocr", default: true))]
         case "create_file":
             let f = try format(try required(a, "format"))
-            let folder = string(a, "folder").map(url) ?? OpenTextSettings.load().defaultFolderURL
+            let folder = try string(a, "folder").map(url) ?? OpenTextSettings.load().defaultFolderURL
             return ["path": try NewFile.create(f, name: string(a, "name") ?? "Untitled", in: folder).path]
         case "combine_pdfs":
-            return ["path": try engine.combinePDFs(try files(a), output: url(try required(a, "out"))).path]
+            return ["path": try engine.combinePDFs(try files(a), output: try url(try required(a, "out"))).path]
         case "images_to_pdf":
-            return ["path": try engine.imagesToPDF(try files(a), output: url(try required(a, "out"))).path]
+            return ["path": try engine.imagesToPDF(try files(a), output: try url(try required(a, "out"))).path]
         case "list_formats":
             func entry(_ f: DocFormat) -> [String: Any] {
                 ["format": f.rawValue, "extension": f.fileExtension,
@@ -97,13 +109,13 @@ public enum OpenTextTools {
             if let n = string(a, "format") { return entry(try format(n)) }
             return ["formats": DocFormat.allCases.map(entry)]
         case "lock_file":
-            let key = string(a, "recovery_public_key") ?? OpenTextSettings.load().recoveryPublicKey
-            let out = try Locker.lock(url(try required(a, "file")), password: try required(a, "password"), recoveryPublicKeyBase64: key,
-                                      output: string(a, "out").map(url), removeOriginal: bool(a, "remove_original", default: false))
+            let key = (trusted ? string(a, "recovery_public_key") : nil) ?? OpenTextSettings.load().recoveryPublicKey
+            let out = try Locker.lock(try url(try required(a, "file")), password: try required(a, "password"), recoveryPublicKeyBase64: key,
+                                      output: try string(a, "out").map(url), removeOriginal: trusted && bool(a, "remove_original", default: false))
             return ["path": out.path, "recovery": key != nil]
         case "unlock_file":
-            let file = url(try required(a, "file"))
-            let out = string(a, "out").map(url)
+            let file = try url(try required(a, "file"))
+            let out = try string(a, "out").map(url)
             if let rk = string(a, "recovery_key") {
                 guard let key = RecoveryKey(displayString: rk) else { throw OpenTextError.invalidRecoveryKey }
                 return ["path": try Locker.unlock(file, recoveryKey: key, output: out).path]

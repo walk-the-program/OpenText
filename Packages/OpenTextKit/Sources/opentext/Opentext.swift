@@ -25,7 +25,7 @@ func password(confirm: Bool) throws -> String {
 /// Runs a shared tool, prints plain or JSON output, maps errors to stderr + exit 1.
 func run(_ tool: String, _ args: [String: Any], json: Bool) throws {
     do {
-        let r = try OpenTextTools.call(tool, args)
+        let r = try OpenTextTools.call(tool, args, trusted: true)
         if json { print(jsonString(r)); return }
         if let t = r["text"] as? String { print(t) }
         else if let o = r["outputs"] as? [String] { o.forEach { print($0) } }

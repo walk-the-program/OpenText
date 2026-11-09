@@ -207,3 +207,97 @@ enum LegacyFixture {
     static let base64 = "T1RMSwEAAAImeyJjaXBoZXIiOiJBRVMtMjU2LUdDTSIsInBhc3N3b3JkIjp7Iml0ZXJhdGlvbnMiOjYwMDAwMCwia2RmIjoiUEJLREYyLUhNQUMtU0hBMjU2Iiwibm9uY2UiOiJiR2UzK2QxalBSWWRDTFBBIiwic2FsdCI6ImZXWU5uT2JTZGRNMm9Sa3lwRGNkc3c9PSIsIndyYXBwZWRLZXkiOiJFY1VpR0pUaEZWTWlGQ2puNGpqNUdHV3BkSHRaT1dIV1RoL3ZpREIxcUd4R1BsR2tzenlSNEFKZDl2NGVzSWJBIn0sInBheWxvYWROb25jZSI6ImdrUmpvVzE0L05MZUpQRWIiLCJyZWNvdmVyeSI6eyJlcGhlbWVyYWxQdWJsaWNLZXkiOiJ4dUpiMXFrRmlGaTlyZ1dxanN0NEc4eEc4ekQ1V2NwVnJ3Y0drekpHVjI4PSIsImluZm8iOiJPcGVuVGV4dCByZWNvdmVyeSB2MSIsImtkZiI6IlgyNTUxOS1IS0RGLVNIQTI1NiIsIm5vbmNlIjoiMzZtNkU4Um1UUnY3L2hpRSIsInNhbHQiOiJmamJFUWpKeTIrcFBWZGsrUHM1M3d3PT0iLCJ3cmFwcGVkS2V5IjoiSTdDbXNpRVloN3dGaEtlZVhRVUpUOG1TRkZZM29oRWFmdllEOC9BeExDcmJYMC9MNDZSNVZSZUdnUldEWDNJdiJ9LCJ2ZXJzaW9uIjoxfVWeM9BzLJLnuN816/LAag1M3oSTCBMSkH0ESSq7hkeIZUI0OQPOXY2URl7paw=="
     static let recovery = "YDXO-DI7R-NQ2L-U6AI-PL54-FH4Y-PFFV-CEJK-QL44-QN5T-ULD4-X6YN-INXQ"
 }
+
+final class SecurityFixTests: TempTestCase {
+    func testConvertRefusesDirectoryAndWrongExtension() throws {
+        let src = try write("a.txt", "hi")
+        let folder = file("Docs"); try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for ow in [false, true] {
+            var o = ConversionOptions(); o.overwrite = ow
+            XCTAssertThrowsError(try engine.convert(src, to: .md, output: folder, options: o))
+            let rc = try write(".zshrc", "precious")
+            XCTAssertThrowsError(try engine.convert(src, to: .md, output: rc, options: o))
+            XCTAssertEqual(try String(contentsOf: rc, encoding: .utf8), "precious")
+        }
+        var isDir: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDir) && isDir.boolValue)
+        XCTAssertThrowsError(try engine.combinePDFs([src], output: folder))
+    }
+
+    func testOverwriteReplacesFileAndLeavesNoTemp() throws {
+        let src = try write("a.txt", "new")
+        let dest = try write("a.md", "old")
+        var o = ConversionOptions(); o.overwrite = true
+        _ = try engine.convert(src, to: .md, output: dest, options: o)
+        XCTAssertEqual(try String(contentsOf: dest, encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines), "new")
+        XCTAssertFalse(try FileManager.default.contentsOfDirectory(atPath: dir.path).contains { $0.hasSuffix(".tmp") })
+    }
+
+    func testToolsPathRules() throws {
+        let src = try write("a.txt", "hi")
+        XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": ["a.txt"], "to": "md"]))
+        XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": [src.path], "to": "md", "out": "rel.md"]))
+        XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": [src.path], "to": "md", "out": dir.path, "overwrite": true]))
+        var isDir: ObjCBool = false
+        XCTAssertTrue(FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir) && isDir.boolValue)
+        XCTAssertNoThrow(try OpenTextTools.call("convert", ["files": [src.path], "to": "md"]))
+        XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": ["~/definitely-not-there.txt"], "to": "md"])) {
+            XCTAssertTrue(($0 as? OpenTextError).map { if case .unreadable(let u) = $0 { return u.path.hasPrefix("/") && !u.path.contains("~") } else { return false } } ?? false)
+        }
+    }
+
+    func testMCPLockIgnoresRecoveryKeyAndRemoveOriginal() throws {
+        let defs = OpenTextTools.toolDefinitions()
+        let lock = defs.first { $0["name"] as? String == "lock_file" }!
+        let props = ((lock["inputSchema"] as! [String: Any])["properties"] as! [String: Any])
+        XCTAssertNil(props["recovery_public_key"]); XCTAssertNil(props["remove_original"])
+        let src = try write("k.txt", "x")
+        let (_, pub) = RecoveryKey.generate()
+        let r = try OpenTextTools.call("lock_file", ["file": src.path, "password": "pw", "recovery_public_key": pub, "remove_original": true])
+        XCTAssertEqual(r["recovery"] as? Bool, false)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: src.path))
+    }
+
+    func testRemoveOriginalVerifiesAndTrashes() throws {
+        let src = try write("t.txt", "trash me")
+        let out = try Locker.lock(src, password: "pw", recoveryPublicKeyBase64: nil, removeOriginal: true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: src.path))
+        XCTAssertEqual(String(decoding: try Locker.decrypt(out, password: "pw").data, as: UTF8.self), "trash me")
+        XCTAssertEqual(OpenTextError.originalNotRemoved(src), OpenTextError.originalNotRemoved(src))
+        XCTAssertNotNil(OpenTextError.originalNotRemoved(src).errorDescription)
+    }
+
+    func testIterationBounds() throws {
+        let out = file("i.otlock")
+        try Locker.lock(data: Data("x".utf8), originalName: "i.txt", password: "pw", recoveryPublicKeyBase64: nil, output: out)
+        let good = try Data(contentsOf: out)
+        for (from, to) in [("600000", "599999"), ("600000", "10000001")] {
+            var d = good
+            let r = d.range(of: Data(from.utf8))!
+            d.replaceSubrange(r, with: Data(to.utf8))
+            if to.count != from.count { // header length field must match
+                let len = d[5..<9].reduce(0) { ($0 << 8) | Int($1) } + (to.count - from.count)
+                d.replaceSubrange(5..<9, with: [UInt8(len >> 24 & 255), UInt8(len >> 16 & 255), UInt8(len >> 8 & 255), UInt8(len & 255)])
+            }
+            let bad = file("bad.otlock"); try d.write(to: bad)
+            XCTAssertThrowsError(try Locker.decrypt(bad, password: "pw")) { XCTAssertEqual($0 as? OpenTextError, .corruptLockedFile) }
+        }
+    }
+
+    func testFingerprint() {
+        let (_, pub) = RecoveryKey.generate()
+        let f = RecoveryKey.fingerprint(publicKeyBase64: pub)!
+        XCTAssertEqual(f.count, 19); XCTAssertEqual(f.filter { $0 == "-" }.count, 3)
+        XCTAssertEqual(f, RecoveryKey.fingerprint(publicKeyBase64: pub))
+        let zero = Data(count: 32).base64EncodedString()
+        let h = SHA256.hash(data: Data(count: 32)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        XCTAssertEqual(RecoveryKey.fingerprint(publicKeyBase64: zero)!.replacingOccurrences(of: "-", with: ""), h)
+        XCTAssertNil(RecoveryKey.fingerprint(publicKeyBase64: "nope"))
+    }
+
+    func testMarkdownEscapesHTMLAndImages() {
+        let html = MD.toHTML("<script>alert(1)</script>\n\nhello <b>x</b> ![the alt](https://evil.example/p.png) ![](file:///etc/passwd)")
+        XCTAssertFalse(html.contains("<script")); XCTAssertFalse(html.contains("<b>")); XCTAssertFalse(html.contains("<img"))
+        XCTAssertTrue(html.contains("&lt;script&gt;")); XCTAssertTrue(html.contains("the alt"))
+    }
+}

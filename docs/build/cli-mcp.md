@@ -40,7 +40,7 @@ stdio transport, JSON-RPC 2.0, built on the official MCP Swift SDK (protocol ver
 | `combine_pdfs` | **files**, **out** |
 | `images_to_pdf` | **files**, **out** |
 | `list_formats` | format |
-| `lock_file` | **file**, **password**, out, remove_original, recovery_public_key |
+| `lock_file` | **file**, **password**, out |
 | `unlock_file` | **file**, password, recovery_key, out |
 
 Each tool publishes a JSON Schema via `tools/list`.
@@ -66,3 +66,12 @@ Or in `.mcp.json` / `~/.claude.json`:
 ```
 
 Passwords for `lock_file`/`unlock_file` are tool arguments, so they appear in the agent's transcript. Prefer the CLI with `OPENTEXT_PASSWORD` when that matters.
+
+## Safety rules (engine-enforced)
+
+- Output paths: a destination that is an existing folder is refused, and its extension must match the target format (`out: ~/.zshrc` or `out: ~/Documents` fails with an error). `overwrite` replaces an existing file atomically (staged in the destination folder, then `replaceItemAt`), so a failed write keeps the old file.
+- MCP: `out`, `file` and `files` must be absolute or start with `~`; relative paths are rejected. `lock_file` has no `recovery_public_key` or `remove_original` argument: it always uses the recovery key from settings and never deletes the original. The CLI (run by a human) keeps `--remove-original` and relative paths.
+- `opentext lock --remove-original` decrypts the written .otlock in memory and compares bytes before moving the original to the Trash. If the Trash move fails, the command errors (`originalNotRemoved`) and the .otlock stays.
+- `OPENTEXT_PASSWORD` is visible to other processes of the same user (environment, `ps eww`). Prefer the no-echo prompt.
+- Unlock accepts PBKDF2 iteration counts of 600,000 to 10,000,000 only; anything else is a damaged file.
+- Markdown to HTML (used for rtf/docx/odt) escapes raw HTML and renders images as their alt text, so conversion never loads remote or `file://` resources.

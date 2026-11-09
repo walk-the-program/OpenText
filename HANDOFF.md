@@ -1,5 +1,12 @@
 # Handoff log
 
+## 2026-11-09 (later) · Icon mark as the in-app logo
+
+**Did:** Walker's final icon mark is now drawn in code (`Packages/OpenTextDesign/Sources/OpenTextDesign/BrandMark.swift`, one geometry for the colour view and the monochrome template) and used in the setup window, the menu bar extra (template, replaces `doc.text`), the Finder extension's menu items (template; the extension now links OpenTextDesign) and the "couldn't open" empty state. The About panel already uses AppIcon (`ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon`). Decision D-021; `identity.mark-fold` #e2e58a added to `design/brand.json` as logo-only.
+**Verified:** OpenTextDesign 4 tests and OpenTextUI 44 pass. Off-screen renders of the mark (light, dark, template at 16 and 64pt) and the setup window checked against the source SVG. Signed Release build succeeds; `build/OpenText.app` refreshed and passes `codesign --verify --deep --strict`. Not rendered: the empty state, the real menu bar and Finder menu (need a launch).
+**Decided:** Draw the mark as vector from the SVG paths instead of shipping PNG copies, so it scales and follows dark mode; the citron fold stays the same in both modes.
+**Next:** On first launch, check the menu bar icon and the Finder right-click icons at real size, then run the audit's launch checklist.
+
 ## 2026-11-09 · UI polish pass and full code audit
 
 **Did:**

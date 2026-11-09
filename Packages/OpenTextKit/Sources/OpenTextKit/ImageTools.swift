@@ -61,17 +61,49 @@ enum ImageTools {
         guard CGImageDestinationFinalize(dest) else { throw OpenTextError.writeFailed(url) }
     }
 
-    /// Writes a PDF with one page per image, each page sized to its image (capped at 842 points on the long side).
+    /// The source image as stored (so JPEG data can stay compressed in a PDF) plus its EXIF orientation (1...8).
+    /// Falls back to the oriented thumbnail path, orientation 1, when the source cannot be decoded directly.
+    static func loadRaw(_ url: URL) throws -> (image: CGImage, orientation: Int) {
+        if let src = CGImageSourceCreateWithURL(url as CFURL, nil), CGImageSourceGetCount(src) > 0,
+           let img = CGImageSourceCreateImageAtIndex(src, 0, nil) {
+            let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any]
+            let o = (props?[kCGImagePropertyOrientation] as? Int) ?? 1
+            return (img, (1...8).contains(o) ? o : 1)
+        }
+        return (try load(url), 1)
+    }
+
+    /// Maps raw pixel space (y up, `w` x `h`) to the displayed image for an EXIF orientation.
+    static func orientationTransform(_ o: Int, width w: CGFloat, height h: CGFloat) -> CGAffineTransform {
+        switch o {
+        case 2: return CGAffineTransform(a: -1, b: 0, c: 0, d: 1, tx: w, ty: 0)
+        case 3: return CGAffineTransform(a: -1, b: 0, c: 0, d: -1, tx: w, ty: h)
+        case 4: return CGAffineTransform(a: 1, b: 0, c: 0, d: -1, tx: 0, ty: h)
+        case 5: return CGAffineTransform(a: 0, b: -1, c: -1, d: 0, tx: h, ty: w)
+        case 6: return CGAffineTransform(a: 0, b: -1, c: 1, d: 0, tx: 0, ty: w)
+        case 7: return CGAffineTransform(a: 0, b: 1, c: 1, d: 0, tx: 0, ty: 0)
+        case 8: return CGAffineTransform(a: 0, b: 1, c: -1, d: 0, tx: h, ty: 0)
+        default: return .identity
+        }
+    }
+
+    /// Writes a PDF with one page per image, each page sized to the displayed (EXIF-oriented) image, capped at 842 points on the long side.
     static func imagesToPDF(_ inputs: [URL], output: URL) throws -> URL {
         guard !inputs.isEmpty else { throw OpenTextError.unreadable(output) }
         guard let ctx = CGContext(output as CFURL, mediaBox: nil, nil) else { throw OpenTextError.writeFailed(output) }
         for url in inputs {
-            let image = try load(url)
-            let scale = min(1, 842 / Double(max(image.width, image.height)))
-            var box = CGRect(x: 0, y: 0, width: Double(image.width) * scale, height: Double(image.height) * scale)
+            let (image, orientation) = try loadRaw(url)
+            let w = CGFloat(image.width), h = CGFloat(image.height)
+            let swap = orientation >= 5
+            let (ow, oh) = swap ? (h, w) : (w, h)
+            let scale = min(1, 842 / max(ow, oh))
+            var box = CGRect(x: 0, y: 0, width: ow * scale, height: oh * scale)
             let boxData = withUnsafeBytes(of: &box) { Data($0) }
             ctx.beginPDFPage([kCGPDFContextMediaBox as String: boxData] as CFDictionary)
-            ctx.draw(image, in: box)
+            ctx.saveGState()
+            ctx.concatenate(orientationTransform(orientation, width: w, height: h).concatenating(CGAffineTransform(scaleX: scale, y: scale)))
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+            ctx.restoreGState()
             ctx.endPDFPage()
         }
         ctx.closePDF()

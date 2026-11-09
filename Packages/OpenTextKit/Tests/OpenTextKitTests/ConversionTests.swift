@@ -146,6 +146,39 @@ final class ConversionTests: TempTestCase {
         }
     }
 
+    func noisyJPEG(_ name: String, width: Int, height: Int, orientation: Int? = nil) throws -> URL {
+        var px = [UInt8](repeating: 255, count: width * height * 4)
+        var seed: UInt32 = 12345
+        for y in 0..<height { for x in 0..<width {
+            seed = seed &* 1664525 &+ 1013904223
+            let i = (y * width + x) * 4
+            px[i] = UInt8(truncatingIfNeeded: x / 8 + Int(seed >> 28)); px[i + 1] = UInt8(truncatingIfNeeded: y / 6 + Int((seed >> 24) & 15)); px[i + 2] = UInt8(truncatingIfNeeded: (x + y) / 10)
+        } }
+        let ctx = CGContext(data: &px, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+                            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+        let u = file(name)
+        let d = CGImageDestinationCreateWithURL(u as CFURL, UTType.jpeg.identifier as CFString, 1, nil)!
+        var props: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: 0.8]
+        if let orientation { props[kCGImagePropertyOrientation] = orientation }
+        CGImageDestinationAddImage(d, ctx.makeImage()!, props as CFDictionary)
+        XCTAssertTrue(CGImageDestinationFinalize(d))
+        return u
+    }
+
+    func testImagesToPDFKeepsJPEGCompressedAndHonoursOrientation() throws {
+        let jpg = try noisyJPEG("big.jpg", width: 2000, height: 1500)
+        let pdf = try engine.imagesToPDF([jpg], output: file("big.pdf"))
+        let jpgSize = try Data(contentsOf: jpg).count, pdfSize = try Data(contentsOf: pdf).count
+        XCTAssertLessThan(pdfSize, 2 * jpgSize, "pdf \(pdfSize) vs jpeg \(jpgSize)")
+        let landscape = PDFDocument(url: pdf)!.page(at: 0)!.bounds(for: .mediaBox)
+        XCTAssertGreaterThan(landscape.width, landscape.height)
+
+        let rotated = try noisyJPEG("rot.jpg", width: 400, height: 300, orientation: 6)
+        let box = PDFDocument(url: try engine.imagesToPDF([rotated], output: file("rot.pdf")))!.page(at: 0)!.bounds(for: .mediaBox)
+        XCTAssertGreaterThan(box.height, box.width)
+        XCTAssertEqual(box.height / box.width, 400.0 / 300.0, accuracy: 0.01)
+    }
+
     func testImagesToPDFAndCombine() throws {
         let a = try imageFile("a.png", type: .png), b = try imageFile("b.jpg", type: .jpeg)
         let pdf = try engine.imagesToPDF([a, b, a], output: file("imgs.pdf"))

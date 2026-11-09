@@ -4,10 +4,19 @@ import PDFKit
 import Vision
 
 enum PDFText {
+    /// Bitmap cap for rendered pages (about 100 megapixels); larger pages are scaled down to fit.
+    static let maxPixels = 100_000_000.0
+
     static func render(_ page: PDFPage, scale: CGFloat) -> CGImage? {
         let box = page.bounds(for: .mediaBox)
         let rotated = page.rotation % 180 != 0
-        let size = NSSize(width: (rotated ? box.height : box.width) * scale, height: (rotated ? box.width : box.height) * scale)
+        var size = NSSize(width: (rotated ? box.height : box.width) * scale, height: (rotated ? box.width : box.height) * scale)
+        let pixels = Double(size.width) * Double(size.height)
+        if pixels > maxPixels {
+            let k = CGFloat((maxPixels / pixels).squareRoot())
+            size = NSSize(width: (size.width * k).rounded(.down), height: (size.height * k).rounded(.down))
+        }
+        guard size.width >= 1, size.height >= 1 else { return nil }
         let image = page.thumbnail(of: size, for: .mediaBox)
         var rect = CGRect(origin: .zero, size: image.size)
         return image.cgImage(forProposedRect: &rect, context: nil, hints: nil)

@@ -67,6 +67,7 @@ public enum OpenTextError: Error, LocalizedError, Equatable {
     case invalidRecoveryKey
     case originalNotRemoved(original: URL, locked: URL)
     case fileTooLarge(URL)
+    case timedOut(URL)
     case destinationNotAllowed(URL, String)
 
     public var errorDescription: String? {
@@ -80,6 +81,7 @@ public enum OpenTextError: Error, LocalizedError, Equatable {
         case .noRecoveryKeyConfigured: return "This file has no recovery key slot."
         case .invalidRecoveryKey: return "The recovery key does not unlock this file."
         case let .originalNotRemoved(original, locked): return "The locked file was written to \(locked.path), but the original could not be moved to the Trash: \(original.path)."
+        case let .timedOut(url): return "Converting \(url.lastPathComponent) took longer than 60 seconds and was stopped."
         case let .fileTooLarge(url): return "\(url.lastPathComponent) is larger than 2 GB, which is more than OpenText can lock or unlock."
         case let .destinationNotAllowed(url, why): return "Refusing to write \(url.path): \(why)."
         }

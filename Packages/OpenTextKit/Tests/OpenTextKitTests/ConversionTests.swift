@@ -179,6 +179,24 @@ final class ConversionTests: TempTestCase {
         XCTAssertEqual(box.height / box.width, 400.0 / 300.0, accuracy: 0.01)
     }
 
+    func testRenderCapsHugePages() throws {
+        var box = CGRect(x: 0, y: 0, width: 14400, height: 14400)  // PDF max page size
+        let u = file("huge.pdf")
+        let ctx = CGContext(u as CFURL, mediaBox: &box, nil)!
+        ctx.beginPDFPage(nil); ctx.endPDFPage(); ctx.closePDF()
+        let page = PDFDocument(url: u)!.page(at: 0)!
+        let img = try XCTUnwrap(PDFText.render(page, scale: 2))
+        XCTAssertLessThanOrEqual(Double(img.width * img.height), PDFText.maxPixels * 1.01)
+    }
+
+    func testTextutilTimeoutKillsProcess() throws {
+        let src = try write("t.txt", "hello")
+        XCTAssertThrowsError(try Textutil.convert(src, to: "rtf", output: file("t.rtf"), timeout: 0.0001)) {
+            XCTAssertEqual($0 as? OpenTextError, .timedOut(src))
+        }
+        XCTAssertNoThrow(try Textutil.convert(src, to: "rtf", output: file("t2.rtf")))
+    }
+
     func testImagesToPDFAndCombine() throws {
         let a = try imageFile("a.png", type: .png), b = try imageFile("b.jpg", type: .jpeg)
         let pdf = try engine.imagesToPDF([a, b, a], output: file("imgs.pdf"))

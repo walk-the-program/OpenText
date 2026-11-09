@@ -214,7 +214,10 @@ public struct ConversionEngine: Sendable {
 // MARK: - textutil
 
 enum Textutil {
-    static func convert(_ input: URL, to format: String, output: URL) throws {
+    /// Seconds before a stuck textutil is killed.
+    static let timeout: TimeInterval = 60
+
+    static func convert(_ input: URL, to format: String, output: URL, timeout: TimeInterval = Textutil.timeout) throws {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/textutil")
         var args = ["-convert", format, "-output", output.path]
@@ -225,8 +228,15 @@ enum Textutil {
         p.arguments = args
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle.nullDevice
+        let done = DispatchSemaphore(value: 0)
+        p.terminationHandler = { _ in done.signal() }
         do { try p.run() } catch { throw OpenTextError.unreadable(input) }
-        p.waitUntilExit()
+        if done.wait(timeout: .now() + timeout) == .timedOut {
+            p.terminate()
+            _ = done.wait(timeout: .now() + 5)
+            try? FileManager.default.removeItem(at: output)
+            throw OpenTextError.timedOut(input)
+        }
         guard p.terminationStatus == 0, FileManager.default.fileExists(atPath: output.path) else {
             throw OpenTextError.unreadable(input)
         }

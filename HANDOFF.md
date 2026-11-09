@@ -1,5 +1,12 @@
 # Handoff log
 
+## 2026-11-08 (late) · Signed build after Xcode sign-in
+
+**Did:** Signed Debug and Release builds after Walker signed in to Xcode; `-allowProvisioningDeviceRegistration` registered this Mac and created the profiles. Copied the Release app to `build/OpenText.app` (git-ignored). Added the signed build command to `docs/build/app.md`; cleared the sign-in row in `docs/product/owner-blockers.md`.
+**Verified:** Both builds `BUILD SUCCEEDED`; `codesign --verify --deep --strict` passes on Debug, Release and the copied app; entitlements show app group `7ZT7J8C9QP.com.walkertracy.opentext` on the app and the Finder extension, plus `keychain-access-groups` on the app. App still not launched.
+**Decided:** No GitHub repo for now (Walker: "No Github yet"); work stays committed on local `main`.
+**Next:** Walker opens `build/OpenText.app` for the first real run, goes through the setup window, and reports what's off. Nothing is blocking it.
+
 ## 2026-11-08 · Kickoff, look lock and overnight V1 build
 
 **Did:**

@@ -44,3 +44,10 @@ App group + keychain-access-groups are restricted entitlements and need a provis
 - No unsaved-changes prompt on Cmd-Q (only on closing a window).
 - Animated GIFs lose extra frames when saved from the image editor; webp cannot be saved.
 - `findLockedSibling` guesses the new .otlock by name prefix when the original could not be trashed.
+
+
+## Signed build (verified 2026-11-08)
+```bash
+xcodebuild -project OpenText.xcodeproj -scheme OpenText -configuration Release -destination 'platform=macOS' DEVELOPMENT_TEAM=7ZT7J8C9QP -allowProvisioningUpdates -allowProvisioningDeviceRegistration build
+```
+The first signed build registered this Mac in the developer account and created the Mac development profiles for the app group and Keychain group. A verified Release copy is kept at `build/OpenText.app` (git-ignored).

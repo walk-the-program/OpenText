@@ -143,3 +143,10 @@ Newest at the bottom. Never delete an entry; mark it superseded instead.
 - Decision: Walker approved, for a potentially commercial product: Inter Tight font (SIL OFL 1.1, from google/fonts), swift-markdown 0.9.0 (Apache 2.0; swift-cmark BSD-2), swift-argument-parser 1.8.2 (Apache 2.0), MCP Swift SDK 0.12.1 (Apache 2.0, transitioning from MIT; deps swift-nio, async-http-client, swift-log, swift-system Apache 2.0, eventsource MIT), KeyboardShortcuts 1.10.0 (MIT). All source, no prebuilt binaries, no copyleft. Headings return to Inter Tight 600 as in the pack. Any release must ship a third-party notices file with these licenses.
 - Why: Walker: "As long as everything is safe and available for a potentially commercial product, then yes." Libraries replace hand-rolled Markdown parsing, CLI parsing, MCP protocol code and hotkey handling.
 - Alternatives considered: Argon2 via libsodium (skipped: ships a prebuilt binary; PBKDF2 at 600k iterations meets guidance); hand-rolled versions of each library.
+
+## D-021 — The final icon mark is the in-app logo; citron #e2e58a is its only colour
+- Date: 2026-11-09
+- Status: Decided
+- Decision: Walker's final icon (source: ~/Desktop/Projects/Nominal Studios/Brand Assets/OpenText icon/, already the AppIcon) is drawn in code as `BrandMark` (OpenTextDesign) and used in the About panel (via AppIcon), the setup window, the menu bar extra (monochrome template), the Finder extension's menu items (template) and the "couldn't open" empty state. Paper and ink follow `Palette.surface` / `Palette.ink`; the fold is citron #e2e58a in both modes and is logo-only (`Brand.Mark.fold`, `identity.mark-fold` in brand.json), never a UI fill.
+- Why: Walker: "use that mark wherever the app shows its logo… keeping the citron #e2e58a fold as the only colour." This widens BUILD-PACK's "logo only in the top bar or welcome screen" rule to those places.
+- Alternatives considered: SF Symbol `doc.text` in the menu bar (replaced); raster PNG copies of the icon (rejected: one vector geometry source scales to every size and adapts to dark mode).

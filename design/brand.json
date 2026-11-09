@@ -3,7 +3,8 @@
     "app-name": "OpenText",
     "app-subtitle": "Open, edit, convert or lock any document",
     "contact-email": "none",
-    "site-url": "none"
+    "site-url": "none",
+    "mark-fold": "#e2e58a"
   },
   "fonts": {
     "heading": {

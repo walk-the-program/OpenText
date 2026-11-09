@@ -258,6 +258,19 @@ final class SecurityFixTests: TempTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: src.path))
     }
 
+    func testMCPConvertIgnoresOverwrite() throws {
+        let conv = OpenTextTools.toolDefinitions().first { $0["name"] as? String == "convert" }!
+        XCTAssertNil(((conv["inputSchema"] as! [String: Any])["properties"] as! [String: Any])["overwrite"])
+        let src = try write("o.txt", "new")
+        let existing = try write("o.md", "keep me")
+        let r = try OpenTextTools.call("convert", ["files": [src.path], "to": "md", "overwrite": true])
+        XCTAssertEqual(try String(contentsOf: existing, encoding: .utf8), "keep me")
+        XCTAssertEqual((r["outputs"] as? [String])?.first, file("o 2.md").path)
+        // The trusted CLI still honours it.
+        _ = try OpenTextTools.call("convert", ["files": [src.path], "to": "md", "overwrite": true], trusted: true)
+        XCTAssertEqual(try String(contentsOf: existing, encoding: .utf8), "new")
+    }
+
     func testRemoveOriginalVerifiesAndTrashes() throws {
         let src = try write("t.txt", "trash me")
         let out = try Locker.lock(src, password: "pw", recoveryPublicKeyBase64: nil, removeOriginal: true)

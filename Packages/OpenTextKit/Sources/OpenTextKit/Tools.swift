@@ -17,9 +17,9 @@ public enum OpenTextTools {
     public static func toolDefinitions() -> [[String: Any]] {
         let fmt = DocFormat.allCases.map(\.rawValue)
         return [
-            ["name": "convert", "description": "Convert one or more files to another format. Writes next to the input unless out is given; never overwrites unless overwrite is true (picks 'name 2.ext'). pdf to png/jpg writes one image per page. Returns written paths.",
+            ["name": "convert", "description": "Convert one or more files to another format. Writes next to the input unless out is given; never overwrites an existing file (picks 'name 2.ext'). pdf to png/jpg writes one image per page. Returns written paths.",
              "inputSchema": obj(["files": arr("Input file paths"), "to": ["type": "string", "enum": fmt, "description": "Target format"],
-                                 "out": str("Output path (single input only)"), "overwrite": b, "ocr": ["type": "boolean", "description": "OCR scanned PDF pages (default true)"]],
+                                 "out": str("Output path (single input only)"), "ocr": ["type": "boolean", "description": "OCR scanned PDF pages (default true)"]],
                                 required: ["files", "to"])],
             ["name": "extract_text", "description": "Extract plain text (words only) from txt, md, rtf, html, docx, doc, odt or pdf. Scanned PDF pages use on-device OCR unless ocr is false.",
              "inputSchema": obj(["file": str("Input file path"), "ocr": b], required: ["file"])],
@@ -80,7 +80,7 @@ public enum OpenTextTools {
             let out = try string(a, "out").map(url)
             if out != nil, inputs.count > 1 { throw ToolError("'out' can only be used with a single input file.") }
             var opts = ConversionOptions()
-            opts.overwrite = bool(a, "overwrite", default: false)
+            opts.overwrite = trusted && bool(a, "overwrite", default: false)
             opts.ocr = bool(a, "ocr", default: true)
             var results = [[String: Any]]()
             var all = [String]()

@@ -114,16 +114,48 @@ private func makeHome() throws -> URL {
         #expect(FileChangeCheck.hasChanged(recorded: d, current: nil))
         #expect(!FileChangeCheck.hasChanged(recorded: nil, current: d))
     }
-    @Test func encodingRoundTrip() throws {
+    @Test func latin1RoundTripAndEncodingChange() throws {
         let latin = Data([0x63, 0x61, 0x66, 0xE9])          // "café" in Latin-1, invalid UTF-8
-        let (s, enc) = try #require(TextCoding.decode(latin))
-        #expect(s == "café" && enc == .isoLatin1)
-        #expect(TextCoding.encode(s + "!", as: enc).0 == Data([0x63, 0x61, 0x66, 0xE9, 0x21]))
-        let (d2, e2) = TextCoding.encode("snow ☃", as: .isoLatin1)
-        #expect(e2 == .utf8 && String(data: d2, encoding: .utf8) == "snow ☃")
-        let u16 = "hi".data(using: .utf16)!
-        #expect(TextCoding.decode(u16)?.1 == .utf16)
+        let (s, fmt) = try #require(TextCoding.decode(latin))
+        #expect(s == "café" && fmt == TextFormat(encoding: .isoLatin1))
+        #expect(TextCoding.encode(s, as: fmt) == latin)
+        #expect(TextCoding.encode(s + "!", as: fmt) == Data([0x63, 0x61, 0x66, 0xE9, 0x21]))
+        #expect(!TextCoding.needsEncodingChange(s + "!", format: fmt))
+        #expect(TextCoding.needsEncodingChange("snow ☃", format: fmt))
+        #expect(TextCoding.encode("snow ☃", as: fmt) == nil)
+        #expect(!TextCoding.needsEncodingChange("snow ☃", format: .utf8))
+    }
+    @Test func bomRoundTrip() throws {
+        let utf8 = Data([0xEF, 0xBB, 0xBF]) + Data("héllo".utf8)
+        let (s, f) = try #require(TextCoding.decode(utf8))
+        #expect(s == "héllo" && f == TextFormat(encoding: .utf8, hasBOM: true))
+        #expect(TextCoding.encode(s, as: f) == utf8)
+        let le = Data([0xFF, 0xFE]) + "hi ☃".data(using: .utf16LittleEndian)!
+        let (s2, f2) = try #require(TextCoding.decode(le))
+        #expect(s2 == "hi ☃" && f2 == TextFormat(encoding: .utf16LittleEndian, hasBOM: true))
+        #expect(TextCoding.encode(s2, as: f2) == le)
+        let be = Data([0xFE, 0xFF]) + "hi".data(using: .utf16BigEndian)!
+        let (s3, f3) = try #require(TextCoding.decode(be))
+        #expect(s3 == "hi" && TextCoding.encode(s3, as: f3) == be)
         #expect(TextCoding.decode(Data("plain".utf8))?.1 == .utf8)
+    }
+    @Test func safeWriteKeepsFinderTags() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("otl-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appendingPathComponent("a.txt")
+        try Data("old".utf8).write(to: file)
+        let name = "com.apple.metadata:_kMDItemUserTags"
+        let tag = try PropertyListSerialization.data(fromPropertyList: ["Red\n6"], format: .binary, options: 0)
+        #expect(tag.withUnsafeBytes { setxattr(file.path, name, $0.baseAddress, tag.count, 0, 0) } == 0)
+        try SafeWrite.write(Data("new".utf8), to: file)
+        #expect(try Data(contentsOf: file) == Data("new".utf8))
+        let size = getxattr(file.path, name, nil, 0, 0, 0)
+        #expect(size == tag.count)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: dir.path).count == 1)   // no temp left
+        let fresh = dir.appendingPathComponent("b.txt")
+        try SafeWrite.write(Data("x".utf8), to: fresh)
+        #expect(try Data(contentsOf: fresh) == Data("x".utf8))
     }
     @Test func pinPolicy() {
         #expect(PinPolicy.evaluate(pinned: nil, current: nil) == .createNew)

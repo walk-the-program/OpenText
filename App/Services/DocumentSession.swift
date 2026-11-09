@@ -12,6 +12,13 @@ struct PinMismatch {
     enum Resume { case lock, save }
 }
 
+private struct UnsafeBox<T>: @unchecked Sendable { let value: T }
+
+/// A multi-frame GIF would be flattened to one frame by an image save.
+struct AnimatedGIFError: LocalizedError {
+    var errorDescription: String? { "This GIF is animated. Saving would keep only the first frame." }
+}
+
 /// State of one document window: what is on screen, dirty tracking, save, format switch, convert, lock.
 /// A document opened from an .otlock lives only in memory; Save re-locks it over the same file.
 @MainActor
@@ -45,13 +52,22 @@ final class DocumentSession: ObservableObject {
     @Published private(set) var isFrozen = false
     /// Non-nil while PBKDF2 / re-locking runs off the main thread.
     @Published private(set) var workLabel: String?
+    /// Big text files open read-only: no editing, no autosave.
+    @Published private(set) var isReadOnly = false
 
     let commands = DocumentCommands()
     private var latestImage: NSImage?
     private var loadingText = false
     private var autosave: Task<Void, Never>?
     private var recordedMTime: Date?
-    private var textEncoding: String.Encoding = .utf8
+    private var textFormat: TextFormat = .utf8
+    /// Source bytes of an image unlocked from an .otlock (file-backed images read their properties from disk).
+    private var imageSourceData: Data?
+    private var loadToken = UUID()
+    private var isSaving = false
+    /// Bumped on every text edit so a finished save knows whether newer edits arrived meanwhile.
+    private var revision = 0
+    nonisolated private static let maxEditableText = 20_000_000
     private var sessionPassword: String?
     private var pendingNotice: Notice?
     private let engine = ConversionEngine()
@@ -66,13 +82,13 @@ final class DocumentSession: ObservableObject {
     var title: String { effectiveName.lastPathComponent }
     var format: String { DocFormat.canonicalExtension(effectiveName.pathExtension) }
     var canSave: Bool {
-        switch content { case .text, .pdf, .image: return workLabel == nil; default: return false }
+        switch content { case .text: return workLabel == nil && !isReadOnly; case .pdf, .image: return workLabel == nil; default: return false }
     }
 
     /// Anything the user would lose by closing now.
     var hasUnsavedChanges: Bool {
         switch content {
-        case .text: return !isSaved
+        case .text: return !isSaved && !isReadOnly
         case .pdf, .image: return commands.isDirty
         default: return false
         }
@@ -89,48 +105,85 @@ final class DocumentSession: ObservableObject {
 
     // MARK: loading
 
+    private enum Loaded: @unchecked Sendable {
+        case text(String, TextFormat, readOnly: Bool), pdf(PDFDocument), image(NSImage), failed(String)
+    }
+
+    /// Reads and decodes the file off the main thread, then shows it.
     func load() {
         autosave?.cancel()
-        memoryName = nil; sessionPassword = nil
-        pdf = nil; image = nil; latestImage = nil
+        memoryName = nil; sessionPassword = nil; imageSourceData = nil
+        pdf = nil; image = nil; latestImage = nil; isReadOnly = false
         recordedMTime = Self.mtime(url)
-        switch FileRouting.kind(for: url) {
-        case .locked: content = .locked
+        let file = url, kind = FileRouting.kind(for: url)
+        let token = UUID()
+        loadToken = token
+        switch kind {
+        case .locked: content = .locked; settled(); return
+        case .unsupported: content = .failed("OpenText can't open this kind of file."); settled(); return
+        default: break
+        }
+        content = .loading
+        workLabel = "Opening…"
+        Task {
+            let result = await Task.detached { Self.read(file, kind: kind) }.value
+            guard token == loadToken else { return }
+            workLabel = nil
+            apply(result, kind: kind)
+        }
+    }
+
+    nonisolated private static func read(_ file: URL, kind: FileKind) -> Loaded {
+        switch kind {
         case .pdf:
-            if let d = PDFDocument(url: url) { pdf = d; content = .pdf } else { content = .failed("This PDF can't be read.") }
+            return PDFDocument(url: file).map(Loaded.pdf) ?? .failed("This PDF can't be read.")
         case .image:
-            if let i = NSImage(contentsOf: url) { image = i; latestImage = i; content = .image } else { content = .failed("This image can't be read.") }
+            return NSImage(contentsOf: file).map(Loaded.image) ?? .failed("This image can't be read.")
+        default:
+            guard let data = try? Data(contentsOf: file) else { return .failed("This file can't be read.") }
+            return parse(data, kind: kind)
+        }
+    }
+
+    nonisolated private static func parse(_ data: Data, kind: FileKind) -> Loaded {
+        switch kind {
+        case .pdf: return PDFDocument(data: data).map(Loaded.pdf) ?? .failed("This PDF can't be read.")
+        case .image: return NSImage(data: data).map(Loaded.image) ?? .failed("This image can't be read.")
         case .text, .markdown:
-            guard let data = try? Data(contentsOf: url), let (s, enc) = TextCoding.decode(data) else {
-                content = .failed("This file can't be read."); return
-            }
-            textEncoding = enc
+            guard let (s, f) = TextCoding.decode(data) else { return .failed("This file can't be read.") }
+            return .text(s, f, readOnly: data.count > maxEditableText)
+        default: return .failed("OpenText can't open this kind of file.")
+        }
+    }
+
+    private func apply(_ r: Loaded, kind: FileKind) {
+        switch r {
+        case .failed(let m): content = .failed(m)
+        case .pdf(let d): pdf = d; content = .pdf
+        case .image(let i): image = i; latestImage = i; content = .image
+        case .text(let s, let f, let readOnly):
+            textFormat = f
+            isReadOnly = readOnly
             setText(s)
-            content = .text(markdown: FileRouting.kind(for: url) == .markdown)
-        case .unsupported: content = .failed("OpenText can't open this kind of file.")
+            content = .text(markdown: kind == .markdown)
+            if readOnly {
+                sheet = .result(Notice(title: "Opened read-only",
+                                       message: "This file is larger than 20 MB, so OpenText opens it read-only. Edits are not saved."))
+            }
         }
         settled()
     }
 
-    private func present(_ u: LockFlow.Unlocked) {
+    private func present(_ u: LockFlow.Unlocked) async {
+        let name = URL(fileURLWithPath: u.originalName)
+        let kind = FileRouting.kind(for: name), data = u.data
+        let result = await Task.detached { Self.parse(data, kind: kind) }.value
         memoryName = u.originalName
         sessionPassword = u.password
         pdf = nil; image = nil; latestImage = nil
+        imageSourceData = kind == .image ? data : nil
         recordedMTime = Self.mtime(url)
-        let name = URL(fileURLWithPath: u.originalName)
-        switch FileRouting.kind(for: name) {
-        case .pdf:
-            if let d = PDFDocument(data: u.data) { pdf = d; content = .pdf } else { content = .failed("This PDF can't be read.") }
-        case .image:
-            if let i = NSImage(data: u.data) { image = i; latestImage = i; content = .image } else { content = .failed("This image can't be read.") }
-        case .text, .markdown:
-            guard let (s, enc) = TextCoding.decode(u.data) else { content = .failed("This file can't be read."); return }
-            textEncoding = enc
-            setText(s)
-            content = .text(markdown: FileRouting.kind(for: name) == .markdown)
-        default: content = .failed("OpenText can't open the unlocked file.")
-        }
-        settled()
+        apply(result, kind: kind)
         if let w = u.warning { sheet = .result(Notice(title: "Touch ID", message: w)) }
     }
 
@@ -150,17 +203,22 @@ final class DocumentSession: ObservableObject {
     // MARK: editing + saving
 
     func textChanged() {
-        guard !loadingText, !isFrozen else { return }
+        guard !loadingText, !isFrozen, !isReadOnly else { return }
+        revision &+= 1
         isSaved = false
         guard !inMemory else { return }
+        scheduleAutosave()
+    }
+    func imageChanged(_ i: NSImage) { latestImage = i }
+
+    private func scheduleAutosave() {
         autosave?.cancel()
         autosave = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
-            _ = await self?.save()
+            _ = await self?.save(interactive: false)
         }
     }
-    func imageChanged(_ i: NSImage) { latestImage = i }
 
     private func markSavedNow() {
         isSaved = true
@@ -173,63 +231,70 @@ final class DocumentSession: ObservableObject {
     }
 
     /// Returns true when the bytes are safely on disk. Refuses to overwrite a file that changed outside OpenText
-    /// unless `force` (the "Keep Mine" choice).
+    /// unless `force` (the "Keep Mine" choice). Autosave passes `interactive: false`: it never asks questions
+    /// (a text that no longer fits its encoding just stays unsaved) and shows no progress overlay.
     @discardableResult
-    func save(force: Bool = false) async -> Bool {
+    func save(force: Bool = false, interactive: Bool = true) async -> Bool {
         autosave?.cancel()
-        guard canSave, !isFrozen else { return false }
+        guard canSave, !isFrozen, !isSaving else { return false }
         if !force && FileChangeCheck.hasChanged(recorded: recordedMTime, current: Self.mtime(url)) {
             sheet = .changedOutside
             return false
         }
+        isSaving = true
+        defer { isSaving = false }
+        let startRevision = revision
         do {
-            if inMemory { return try await saveBack() }
-            switch content {
-            case .text:
-                let (data, enc) = TextCoding.encode(text, as: textEncoding)
-                textEncoding = enc
-                try data.write(to: url, options: .atomic)
-            case .pdf:
-                guard let pdf else { return false }
-                PDFPageOps.flattenStamps(in: pdf)
-                guard let data = pdf.dataRepresentation() else { throw OpenTextError.writeFailed(url) }
-                try data.write(to: url, options: .atomic)
-            case .image:
-                guard let img = latestImage else { return false }
-                guard let data = Self.encode(img, ext: format) else {
-                    throw ToolError("OpenText can't save \(format) images. Use Convert to make a png or jpg.")
-                }
-                try data.write(to: url, options: .atomic)
-            default: return false
+            if inMemory { return try await saveBack(interactive: interactive) }
+            if interactive { workLabel = "Saving…" }
+            defer { if interactive { workLabel = nil } }
+            guard let data = try await buildData(interactive: interactive) else { return false }
+            let dest = url
+            try await Task.detached { try SafeWrite.write(data, to: dest) }.value
+            if case .text = content, revision != startRevision {      // typed during the write: still dirty
+                recordedMTime = Self.mtime(url)
+                scheduleAutosave()
+            } else {
+                markSavedNow()
             }
-            markSavedNow()
             return true
+        } catch let error as AnimatedGIFError {
+            refuseAnimatedGIF(error)
+            return false
         } catch {
             fail("Could not save", error)
             return false
         }
     }
 
-    /// Current document bytes for re-locking.
-    private func currentData() -> Data? {
+    /// Current document bytes in the file's own format. The heavy encoding runs off the main thread.
+    /// Returns nil when nothing should be written (the user declined a change of encoding, or autosave met one).
+    private func buildData(interactive: Bool) async throws -> Data? {
         switch content {
         case .text:
-            let (d, enc) = TextCoding.encode(text, as: textEncoding)
-            textEncoding = enc
-            return d
+            let t = text, f = textFormat
+            if let d = await Task.detached(operation: { TextCoding.encode(t, as: f) }).value { return d }
+            guard interactive, await confirmUTF8() else { return nil }
+            textFormat = .utf8
+            return await Task.detached { TextCoding.encode(t, as: .utf8) }.value
         case .pdf:
-            guard let pdf else { return nil }
+            guard let pdf else { throw OpenTextError.writeFailed(url) }
             PDFPageOps.flattenStamps(in: pdf)
-            return pdf.dataRepresentation()
+            let box = UnsafeBox(value: pdf)
+            guard let data = await Task.detached(operation: { box.value.dataRepresentation() }).value else { throw OpenTextError.writeFailed(url) }
+            return data
         case .image:
-            guard let img = latestImage else { return nil }
-            return Self.encode(img, ext: format)
-        default: return nil
+            guard let img = latestImage, let cg = ImageOps.cgImage(from: img) else { throw OpenTextError.writeFailed(url) }
+            let ext = format, file: URL? = inMemory ? nil : url, memory = imageSourceData
+            return try await Task.detached { try Self.encodeImage(cg, ext: ext, sourceURL: file, sourceData: memory) }.value
+        default:
+            throw ToolError("This document can't be saved in its original format.")
         }
     }
 
-    private func saveBack() async throws -> Bool {
-        guard let name = memoryName else { return false }
+    private func saveBack(interactive: Bool) async throws -> Bool {
+        guard memoryName != nil else { return false }
+        let name = memoryName!
         guard let password = sessionPassword else { sheet = .relock; return false }   // unlocked by recovery key: ask for a new password
         switch try LockFlow.checkRecovery(model: .shared) {
         case .mismatch(_, _):
@@ -237,13 +302,76 @@ final class DocumentSession: ObservableObject {
             return false
         default: break
         }
-        guard let data = currentData() else { throw ToolError("This document can't be saved in its original format.") }
+        let startRevision = revision
         workLabel = "Locking…"
         defer { workLabel = nil }
+        guard let data = try await buildData(interactive: interactive) else { return false }
         let warning = try await LockFlow.saveBack(data: data, name: name, to: url, password: password, model: .shared)
-        markSavedNow()
+        if case .text = content, revision != startRevision { recordedMTime = Self.mtime(url) } else { markSavedNow() }
         if let warning { sheet = .result(Notice(title: "Touch ID", message: warning)) }
         return true
+    }
+
+    // MARK: alerts
+
+    private func runAlert(_ alert: NSAlert) async -> NSApplication.ModalResponse {
+        NSApp.activate()
+        return alert.runModal()
+    }
+
+    /// The text can't be written in the file's original encoding any more.
+    private func confirmUTF8() async -> Bool {
+        let alert = NSAlert()
+        alert.messageText = "Save as UTF-8?"
+        alert.informativeText = "\(title) uses an older text encoding that can't hold some of the characters you typed. Saving as UTF-8 keeps them, but other programs that expect the old encoding may show the file differently."
+        alert.addButton(withTitle: "Save as UTF-8")
+        alert.addButton(withTitle: "Cancel")
+        return await runAlert(alert) == .alertFirstButtonReturn
+    }
+
+    /// Offers Convert instead of flattening an animated GIF.
+    private func refuseAnimatedGIF(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = "OpenText can't save an animated GIF"
+        alert.informativeText = "\(error.localizedDescription) Use Convert to make a copy in another format; the original stays as it is."
+        alert.addButton(withTitle: "Convert…")
+        alert.addButton(withTitle: "OK")
+        if alert.runModal() == .alertFirstButtonReturn { requestConvert() }
+    }
+
+    nonisolated static func encodeImage(_ cg: CGImage, ext: String, sourceURL: URL?, sourceData: Data?) throws -> Data {
+        guard let type = DocFormat(fileExtension: ext)?.imageUTType else {
+            throw ToolError("OpenText can't save \(ext) images. Use Convert to make a png or jpg.")   // webp: ImageIO cannot write it
+        }
+        var source: CGImageSource?
+        if let u = sourceURL { source = CGImageSourceCreateWithURL(u as CFURL, nil) }
+        else if let d = sourceData { source = CGImageSourceCreateWithData(d as CFData, nil) }
+        if type == .gif, let source, CGImageSourceGetCount(source) > 1 { throw AnimatedGIFError() }
+        // Carry the source's EXIF / GPS / TIFF / colour metadata over; the pixels are already upright.
+        var props: [CFString: Any] = [:]
+        if let source, let p = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] { props = p }
+        for k in [kCGImagePropertyPixelWidth, kCGImagePropertyPixelHeight, kCGImagePropertyDepth, kCGImagePropertyColorModel,
+                  kCGImagePropertyHasAlpha, kCGImagePropertyIsIndexed, kCGImagePropertyIsFloat, kCGImagePropertyFileSize] {
+            props[k] = nil
+        }
+        if props[kCGImagePropertyOrientation] != nil { props[kCGImagePropertyOrientation] = 1 }
+        if var tiff = props[kCGImagePropertyTIFFDictionary] as? [CFString: Any], tiff[kCGImagePropertyTIFFOrientation] != nil {
+            tiff[kCGImagePropertyTIFFOrientation] = 1
+            props[kCGImagePropertyTIFFDictionary] = tiff
+        }
+        if var exif = props[kCGImagePropertyExifDictionary] as? [CFString: Any] {
+            if exif[kCGImagePropertyExifPixelXDimension] != nil { exif[kCGImagePropertyExifPixelXDimension] = cg.width }
+            if exif[kCGImagePropertyExifPixelYDimension] != nil { exif[kCGImagePropertyExifPixelYDimension] = cg.height }
+            props[kCGImagePropertyExifDictionary] = exif
+        }
+        if type == .jpeg || type == .heic { props[kCGImageDestinationLossyCompressionQuality] = 0.9 }
+        let out = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(out, type.identifier as CFString, 1, nil) else {
+            throw ToolError("This image can't be saved.")
+        }
+        CGImageDestinationAddImage(dest, cg, props as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw ToolError("This image can't be saved.") }
+        return out as Data
     }
 
     /// Sets a new password for a document that was unlocked with the recovery key, then saves.
@@ -280,24 +408,6 @@ final class DocumentSession: ObservableObject {
     // MARK: window close
 
     func saveBeforeClosing() async -> Bool { await save() }
-
-    static func encode(_ image: NSImage, ext: String) -> Data? {
-        let type: UTType
-        switch ext {
-        case "png": type = .png
-        case "jpg": type = .jpeg
-        case "tiff": type = .tiff
-        case "gif": type = .gif
-        case "heic": type = .heic
-        default: return nil   // webp: ImageIO cannot write it
-        }
-        guard let cg = ImageOps.cgImage(from: image) else { return nil }
-        let out = NSMutableData()
-        guard let dest = CGImageDestinationCreateWithData(out, type.identifier as CFString, 1, nil) else { return nil }
-        let props: [CFString: Any] = type == .jpeg || type == .heic ? [kCGImageDestinationLossyCompressionQuality: 0.9] : [:]
-        CGImageDestinationAddImage(dest, cg, props as CFDictionary)
-        return CGImageDestinationFinalize(dest) ? out as Data : nil
-    }
 
     // MARK: changed outside
 
@@ -405,7 +515,7 @@ final class DocumentSession: ObservableObject {
         let file = url
         Task {
             defer { workLabel = nil }
-            do { present(try await LockFlow.decrypt(file, method: method, model: model)) }
+            do { await present(try await LockFlow.decrypt(file, method: method, model: model)) }
             catch { lockedMessage = error.localizedDescription }
         }
     }

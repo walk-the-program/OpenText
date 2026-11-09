@@ -128,20 +128,66 @@ public enum FileChangeCheck {
     }
 }
 
-/// Detect the encoding on load and write back in it.
+/// How a text file was stored: its encoding and whether it started with a byte order mark.
+public struct TextFormat: Equatable, Sendable {
+    public var encoding: String.Encoding
+    public var hasBOM: Bool
+    public init(encoding: String.Encoding, hasBOM: Bool = false) { self.encoding = encoding; self.hasBOM = hasBOM }
+    public static let utf8 = TextFormat(encoding: .utf8)
+}
+
+/// Detect the encoding on load and write back in it, BOM included.
 public enum TextCoding {
-    public static func decode(_ data: Data) -> (String, String.Encoding)? {
-        if data.starts(with: [0xFF, 0xFE]) || data.starts(with: [0xFE, 0xFF]) {
-            if let s = String(data: data, encoding: .utf16) { return (s, .utf16) }
+    public static func decode(_ data: Data) -> (String, TextFormat)? {
+        let bytes = [UInt8](data.prefix(3))
+        if bytes.starts(with: [0xEF, 0xBB, 0xBF]) {
+            guard let s = String(data: data.dropFirst(3), encoding: .utf8) else { return nil }
+            return (s, TextFormat(encoding: .utf8, hasBOM: true))
+        }
+        if bytes.starts(with: [0xFF, 0xFE]) || bytes.starts(with: [0xFE, 0xFF]) {
+            let enc: String.Encoding = bytes[0] == 0xFF ? .utf16LittleEndian : .utf16BigEndian
+            if let s = String(data: data.dropFirst(2), encoding: enc) { return (s, TextFormat(encoding: enc, hasBOM: true)) }
         }
         if let s = String(data: data, encoding: .utf8) { return (s, .utf8) }
-        if let s = String(data: data, encoding: .isoLatin1) { return (s, .isoLatin1) }
+        if let s = String(data: data, encoding: .isoLatin1) { return (s, TextFormat(encoding: .isoLatin1)) }
         return nil
     }
-    /// Falls back to UTF-8 when the text no longer fits the original encoding (second value = encoding used).
-    public static func encode(_ text: String, as enc: String.Encoding) -> (Data, String.Encoding) {
-        if let d = text.data(using: enc) { return (d, enc) }
-        return (Data(text.utf8), .utf8)
+
+    /// Bytes in the file's own encoding with its BOM; nil when the text no longer fits that encoding.
+    public static func encode(_ text: String, as format: TextFormat) -> Data? {
+        guard let body = text.data(using: format.encoding, allowLossyConversion: false) else { return nil }
+        guard format.hasBOM else { return body }
+        switch format.encoding {
+        case .utf8: return Data([0xEF, 0xBB, 0xBF]) + body
+        case .utf16LittleEndian: return Data([0xFF, 0xFE]) + body
+        case .utf16BigEndian: return Data([0xFE, 0xFF]) + body
+        default: return body
+        }
+    }
+
+    /// True when saving would force a different encoding (the user must agree first).
+    public static func needsEncodingChange(_ text: String, format: TextFormat) -> Bool {
+        encode(text, as: format) == nil
+    }
+}
+
+/// Writes through a temp file in the same folder and swaps it in, so Finder tags and other extended
+/// attributes of the existing file survive.
+public enum SafeWrite {
+    public static func write(_ data: Data, to url: URL) throws {
+        let fm = FileManager.default
+        let staged = url.deletingLastPathComponent().appendingPathComponent(".opentext-\(UUID().uuidString).tmp")
+        do {
+            try data.write(to: staged)
+            if fm.fileExists(atPath: url.path) {
+                _ = try fm.replaceItemAt(url, withItemAt: staged)
+            } else {
+                try fm.moveItem(at: staged, to: url)
+            }
+        } catch {
+            try? fm.removeItem(at: staged)
+            throw error
+        }
     }
 }
 

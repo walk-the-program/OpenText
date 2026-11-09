@@ -43,6 +43,13 @@ public struct QuickCreateView: View {
         self.onCancel = onCancel
     }
 
+    /// Popover: flexible 14pt+ gaps inside the fixed 260pt frame. Embedded: fixed gaps, the Create row optionally pushed to the bottom.
+    @ViewBuilder private func gap(_ fixed: CGFloat, flexible: Bool = false) -> some View {
+        if !embedded { Spacer(minLength: 14) }
+        else if flexible { Spacer(minLength: fixed) }
+        else { Color.clear.frame(height: fixed) }
+    }
+
     public var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 6) {
@@ -52,7 +59,7 @@ public struct QuickCreateView: View {
                     .focused($nameFocused)
                     .onSubmit(onCreate)
             }
-            Spacer(minLength: 14)
+            gap(Brand.Spacing.lg)
             VStack(alignment: .leading, spacing: 6) {
                 Text("Type").brandLabel()
                 HStack(spacing: 6) {
@@ -70,7 +77,7 @@ public struct QuickCreateView: View {
                     }
                 }
             }
-            Spacer(minLength: 14)
+            gap(Brand.Spacing.lg)
             HStack(spacing: 4) {
                 Text("Save to:").font(Brand.Fonts.body(13, weight: .medium)).foregroundStyle(Brand.Palette.ink)
                 Text(state.folderName).font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
@@ -80,7 +87,7 @@ public struct QuickCreateView: View {
                     .font(Brand.Fonts.body(13, weight: .semibold)).underline(true).foregroundStyle(Brand.Palette.ink)
                     .keyboardShortcut("o", modifiers: .command)
             }
-            Spacer(minLength: 14)
+            gap(Brand.Spacing.xl, flexible: true)
             HStack(spacing: Brand.Spacing.sm) {
                 if !embedded {
                     Text("Return to create").font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)

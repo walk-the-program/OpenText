@@ -329,5 +329,15 @@ final class SecurityFixTests: TempTestCase {
         let html = MD.toHTML("<script>alert(1)</script>\n\nhello <b>x</b> ![the alt](https://evil.example/p.png) ![](file:///etc/passwd)")
         XCTAssertFalse(html.contains("<script")); XCTAssertFalse(html.contains("<b>")); XCTAssertFalse(html.contains("<img"))
         XCTAssertTrue(html.contains("&lt;script&gt;")); XCTAssertTrue(html.contains("the alt"))
+
+        let js = MD.toHTML("[x](javascript:alert(1)) [y](  JaVaScRiPt:alert(2)) [d](data:text/html,hi) [f](file:///etc/passwd) [v](vbscript:x)")
+        XCTAssertFalse(js.contains("<a")); XCTAssertFalse(js.lowercased().contains("href"))
+        XCTAssertTrue(js.contains("x") && js.contains("y"))
+        let quote = MD.toHTML("[q](https://a.example/\"onmouseover=\"alert(1)) [e](https://a.example/?a=1&b=2)")
+        XCTAssertFalse(quote.contains("\"onmouseover")); XCTAssertTrue(quote.contains("%22onmouseover") || quote.contains("&quot;onmouseover"))
+        XCTAssertTrue(quote.contains("a=1&amp;b=2"))
+        let ok = MD.toHTML("[a](https://x.example) [b](mailto:a@b.example) [c](#frag) [d](../rel/page.html) [e](sub/a:b)")
+        XCTAssertEqual(ok.components(separatedBy: "<a href=").count - 1, 5)
+        XCTAssertEqual(MD.escape("a\"b'c"), "a&quot;b&#39;c")
     }
 }

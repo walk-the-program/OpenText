@@ -7,6 +7,20 @@ enum MD {
         s.replacingOccurrences(of: "&", with: "&amp;")
             .replacingOccurrences(of: "<", with: "&lt;")
             .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&#39;")
+    }
+
+    /// True for http, https, mailto, and scheme-less (relative or fragment) targets. Whitespace and control
+    /// characters are ignored when reading the scheme, as browsers do ("java\tscript:" is still javascript:).
+    static func isSafeLink(_ target: String) -> Bool {
+        let t = String(target.unicodeScalars.filter { !CharacterSet.whitespacesAndNewlines.contains($0) && !CharacterSet.controlCharacters.contains($0) }).lowercased()
+        guard let colon = t.firstIndex(of: ":") else { return true }
+        let scheme = t[..<colon]
+        guard let first = scheme.first, first.isLetter, scheme.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || "+-.".contains($0)) }) else {
+            return scheme.contains { "/?#".contains($0) }  // "a/b:c" is a relative path; other odd schemes are refused
+        }
+        return ["http", "https", "mailto"].contains(String(scheme))
     }
 
     static func toHTML(_ markdown: String) -> String {
@@ -56,7 +70,10 @@ private struct HTMLVisitor: MarkupVisitor {
     mutating func visitSoftBreak(_ s: SoftBreak) -> String { "\n" }
     mutating func visitInlineHTML(_ h: InlineHTML) -> String { MD.escape(h.rawHTML) }
     mutating func visitHTMLBlock(_ h: HTMLBlock) -> String { "<p>\(MD.escape(h.rawHTML.trimmingCharacters(in: .newlines)))</p>\n" }
-    mutating func visitLink(_ l: Link) -> String { "<a href=\"\(MD.escape(l.destination ?? ""))\">\(children(l))</a>" }
+    mutating func visitLink(_ l: Link) -> String {
+        guard let dest = l.destination, !dest.isEmpty, MD.isSafeLink(dest) else { return children(l) }
+        return "<a href=\"\(MD.escape(dest))\">\(children(l))</a>"
+    }
     mutating func visitImage(_ i: Image) -> String {
         // Never emit <img>: conversion must not fetch remote or file:// resources.
         MD.escape(i.plainText.isEmpty ? (i.source ?? "") : i.plainText)

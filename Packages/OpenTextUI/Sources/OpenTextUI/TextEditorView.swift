@@ -138,25 +138,29 @@ public struct TextEditorView: View {
     }
 }
 
-/// Segmented control: selected segment is `Palette.primary`, others flat canvas.
+/// One segmented control: a recessed track holding the segments. The selected segment is
+/// `Palette.ink` with canvas text, the others are clear with ink text (primary stays on the one action button).
 struct BrandSegmented: View {
     let options: [String]
     @Binding var selection: String
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             ForEach(options, id: \.self) { option in
                 let on = option == selection
                 Button { selection = option } label: {
                     Text(option).font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
-                        .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.ink)
-                        .padding(.horizontal, 12).frame(height: Brand.Size.control)
+                        .foregroundStyle(on ? Brand.Palette.canvas : Brand.Palette.ink)
+                        .padding(.horizontal, 12).frame(height: Brand.Size.control - 4)
                         .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                            .fill(on ? Brand.Palette.primary : Brand.Palette.canvas))
+                            .fill(on ? Brand.Palette.ink : Color.clear))
+                        .contentShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
+        .padding(2)
+        .recessedSurface(radius: Brand.Radius.button)
     }
 }
 

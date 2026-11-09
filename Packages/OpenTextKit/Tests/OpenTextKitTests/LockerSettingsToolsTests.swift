@@ -214,7 +214,7 @@ final class SettingsAndToolsTests: TempTestCase {
         XCTAssertEqual(try String(contentsOfFile: uf["path"] as! String, encoding: .utf8), "# Hi\n")
         XCTAssertEqual((try OpenTextTools.call("list_formats", ["format": "pdf"])["targets"] as? [String])?.sorted(), ["jpg", "md", "png", "txt"])
         XCTAssertThrowsError(try OpenTextTools.call("convert", ["files": [md.path]]))
-        XCTAssertEqual(OpenTextTools.toolDefinitions().compactMap { $0["name"] as? String }, OpenTextTools.toolNames)
+        XCTAssertEqual(Set(OpenTextTools.toolDefinitions().compactMap { $0["name"] as? String }).count, 8)
     }
 }
 

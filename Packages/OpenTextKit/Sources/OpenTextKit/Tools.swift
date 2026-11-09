@@ -3,8 +3,6 @@ import Foundation
 /// Shared operation layer used by the `opentext` CLI and the `opentext-mcp` server (same names, same arguments).
 /// Arguments and results are JSON-compatible dictionaries.
 public enum OpenTextTools {
-    public static let toolNames = ["convert", "extract_text", "create_file", "combine_pdfs", "images_to_pdf", "list_formats", "lock_file", "unlock_file"]
-
     private static func obj(_ props: [String: Any], required: [String] = []) -> [String: Any] {
         ["type": "object", "properties": props, "required": required, "additionalProperties": false]
     }
@@ -52,10 +50,6 @@ public enum OpenTextTools {
     static func required(_ a: [String: Any], _ k: String) throws -> String {
         guard let v = string(a, k) else { throw ToolError("Missing required argument '\(k)'.") }
         return v
-    }
-    static func files(_ a: [String: Any]) throws -> [URL] {
-        guard let list = a["files"] as? [String], !list.isEmpty else { throw ToolError("Missing required argument 'files'.") }
-        return list.map(url)
     }
     static func format(_ name: String) throws -> DocFormat {
         guard let f = DocFormat(name: name) else { throw ToolError("Unknown format '\(name)'.") }

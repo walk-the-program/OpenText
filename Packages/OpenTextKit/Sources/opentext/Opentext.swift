@@ -24,7 +24,7 @@ func password(confirm: Bool) throws -> String {
 
 /// Runs a shared tool, prints plain or JSON output, maps errors to stderr + exit 1.
 /// A batch convert where some inputs failed still prints the successes, lists each failure on stderr, and exits 1.
-func run(_ tool: String, _ args: [String: Any], json: Bool) throws {
+func runTool(_ tool: String, _ args: [String: Any], json: Bool) throws {
     let r: [String: Any]
     do {
         r = try OpenTextTools.call(tool, args, trusted: true)
@@ -68,7 +68,7 @@ struct OpenText: ParsableCommand {
         func run() throws {
             var a: [String: Any] = ["files": files, "to": to, "overwrite": overwrite, "ocr": !noOcr]
             if let out { a["out"] = out }
-            try OpenText_run("convert", a, j.json)
+            try runTool("convert", a, json: j.json)
         }
     }
 
@@ -77,7 +77,7 @@ struct OpenText: ParsableCommand {
         @Argument var file: String
         @Flag(name: .long, help: "Skip OCR for scanned PDF pages.") var noOcr = false
         @OptionGroup var j: JSONFlag
-        func run() throws { try OpenText_run("extract_text", ["file": file, "ocr": !noOcr], j.json) }
+        func run() throws { try runTool("extract_text", ["file": file, "ocr": !noOcr], json: j.json) }
     }
 
     struct New: ParsableCommand {
@@ -90,7 +90,7 @@ struct OpenText: ParsableCommand {
             var a: [String: Any] = ["format": format]
             if let name { a["name"] = name }
             if let folder { a["folder"] = folder }
-            try OpenText_run("create_file", a, j.json)
+            try runTool("create_file", a, json: j.json)
         }
     }
 
@@ -99,7 +99,7 @@ struct OpenText: ParsableCommand {
         @Argument var files: [String]
         @Option(name: .long) var out: String
         @OptionGroup var j: JSONFlag
-        func run() throws { try OpenText_run("combine_pdfs", ["files": files, "out": out], j.json) }
+        func run() throws { try runTool("combine_pdfs", ["files": files, "out": out], json: j.json) }
     }
 
     struct ImagesToPDF: ParsableCommand {
@@ -107,7 +107,7 @@ struct OpenText: ParsableCommand {
         @Argument var files: [String]
         @Option(name: .long) var out: String
         @OptionGroup var j: JSONFlag
-        func run() throws { try OpenText_run("images_to_pdf", ["files": files, "out": out], j.json) }
+        func run() throws { try runTool("images_to_pdf", ["files": files, "out": out], json: j.json) }
     }
 
     struct Lock: ParsableCommand {
@@ -120,7 +120,7 @@ struct OpenText: ParsableCommand {
             var a: [String: Any] = ["file": file, "remove_original": removeOriginal]
             if let out { a["out"] = out }
             do { a["password"] = try password(confirm: true) } catch { try fail(error, j.json) }
-            try OpenText_run("lock_file", a, j.json)
+            try runTool("lock_file", a, json: j.json)
         }
     }
 
@@ -135,7 +135,7 @@ struct OpenText: ParsableCommand {
             if let out { a["out"] = out }
             if let recoveryKey { a["recovery_key"] = recoveryKey }
             else { do { a["password"] = try password(confirm: false) } catch { try fail(error, j.json) } }
-            try OpenText_run("unlock_file", a, j.json)
+            try runTool("unlock_file", a, json: j.json)
         }
     }
 
@@ -146,12 +146,10 @@ struct OpenText: ParsableCommand {
         func run() throws {
             var a = [String: Any]()
             if let format { a["format"] = format }
-            try OpenText_run("list_formats", a, j.json)
+            try runTool("list_formats", a, json: j.json)
         }
     }
 }
-
-func OpenText_run(_ tool: String, _ a: [String: Any], _ json: Bool) throws { try run(tool, a, json: json) }
 
 func fail(_ error: Error, _ json: Bool) throws -> Never {
     let msg = (error as? LocalizedError)?.errorDescription ?? "\(error)"

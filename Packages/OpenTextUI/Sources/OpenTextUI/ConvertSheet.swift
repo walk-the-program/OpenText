@@ -48,7 +48,7 @@ public struct ConvertSheet: View {
                     .buttonStyle(.primaryAction).keyboardShortcut(.defaultAction).disabled(targets.isEmpty)
             }
         }
-        .padding(Brand.Spacing.xl).frame(width: 380).background(Brand.Palette.surface)
+        .padding(Brand.Spacing.xl).frame(width: 380).background(Brand.Palette.canvas)
     }
 
     static func title(_ ext: String) -> String {

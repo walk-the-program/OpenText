@@ -91,7 +91,7 @@ run first-run-setup     '{}' "" firstrun
 run second-run-no-setup keep "" firstrun
 dirset='{"setupShown": true, "defaultFolder": "@DIR@", "lastNewFileFormat": "txt"}'
 for s in home-open-panel home-controls home-finish-setup setup-buttons home-create-closes doc-save doc-rename doc-resize \
-         lock-cancel convert-cancel convert-run quick-create doc-toolbar; do
+         lock-cancel convert-cancel convert-run quick-create doc-toolbar doc-close-prompt; do
   run $s "$dirset" with-dir
 done
 

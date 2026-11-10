@@ -9,6 +9,7 @@ extension SelfTestRunner {
     static let clickScenarios: Set<String> = [
         "home-open-panel", "home-controls", "home-finish-setup", "setup-buttons", "home-create-closes", "doc-save",
         "doc-rename", "doc-resize", "lock-cancel", "convert-cancel", "convert-run", "quick-create", "doc-toolbar",
+        "doc-close-prompt",
     ]
 
     func runClickScenario(_ name: String) async {
@@ -26,6 +27,7 @@ extension SelfTestRunner {
         case "convert-run": await convertRun()
         case "quick-create": await quickCreate()
         case "doc-toolbar": await docToolbar()
+        case "doc-close-prompt": await docClosePrompt()
         default: failures.append("unknown click scenario \(name)")
         }
     }
@@ -255,12 +257,22 @@ extension SelfTestRunner {
     private func docResize() async {
         guard let w = await newDoc("Big", file: "Big.txt") else { return }
         let start = w.frame
+        expect(w.delegate is WindowGuardDelegate, "document window delegate should be the close guard, is \(String(describing: w.delegate))")
+        // SwiftUI putting a delegate of its own back must not break the chain: the guard returns and forwards to it.
+        let dummy = ResizeCountingDelegate()
+        await inRunLoop { w.delegate = dummy }
+        expect(w.delegate is WindowGuardDelegate, "close guard was not reinstalled after the delegate was replaced")
         let target = NSSize(width: start.width + 600, height: start.height + 400)
         for i in 1...6 {
             let step = NSSize(width: start.width + 100 * CGFloat(i), height: start.height + 400.0 / 6 * CGFloat(i))
             var f = w.frame; f.size = step; f.origin.y = start.maxY - step.height
             await inRunLoop { w.setFrame(f, display: true) }
             try? await Task.sleep(for: .milliseconds(30))
+        }
+        expect(dummy.resizes > 0, "replaced delegate got no windowDidResize through the guard")
+        for name in [NSWindow.didMoveNotification, NSWindow.didBecomeKeyNotification, NSWindow.didResignKeyNotification,
+                     NSWindow.didExposeNotification, NSWindow.didChangeScreenNotification, NSWindow.didMiniaturizeNotification] {
+            await inRunLoop { NotificationCenter.default.post(name: name, object: w) }
         }
         expect(abs(w.frame.width - target.width) < 2 && abs(w.frame.height - target.height) < 2,
                "window should reach \(target), is \(w.frame.size)")
@@ -378,5 +390,42 @@ extension SelfTestRunner {
         let mono = model.settings.txtMonospace
         await click(mono ? "Inter" : "Mono", in: p)
         _ = await waitFor("monospace setting flipping") { model.settings.txtMonospace != mono }
+    }
+}
+
+@MainActor
+final class ResizeCountingDelegate: NSObject, NSWindowDelegate {
+    var resizes = 0
+    func windowDidResize(_ notification: Notification) { resizes += 1 }
+}
+
+@MainActor
+extension SelfTestRunner {
+    /// Closing a window with unsaved text asks Save / Don't Save / Cancel; the close button shows the dirty dot.
+    func docClosePrompt() async {
+        guard let w = await newDocForClose() else { return }
+        guard let s = session(named: "Close.txt") else { failures.append("no session"); return }
+        s.text = "edited"; s.textChanged()
+        _ = await waitFor("dirty dot in the close button") { w.isDocumentEdited }
+        await inRunLoop { w.performClose(nil) }
+        guard await waitFor("close prompt sheet", { w.attachedSheet != nil }) else { return }
+        _ = await waitUntil("prompt buttons") { await axFind(in: w, label: "Cancel", role: .button) != nil }
+        await click("Cancel", in: w)
+        _ = await waitFor("prompt gone after Cancel") { w.attachedSheet == nil }
+        expect(w.isVisible, "Cancel must keep the window open")
+        // Autosave may have saved in the meantime; make the text dirty again so the prompt is certain.
+        s.text = "edited again"; s.textChanged()
+        await inRunLoop { w.performClose(nil) }
+        guard await waitFor("close prompt sheet (second time)", { w.attachedSheet != nil }) else { return }
+        _ = await waitUntil("prompt buttons") { await axFind(in: w, label: "Don't Save", role: .button) != nil }
+        await click("Don't Save", in: w)
+        _ = await waitFor("window closed by Don't Save") { !w.isVisible }
+    }
+
+    private func newDocForClose() async -> NSWindow? {
+        guard let home = await homeReady() else { return nil }
+        guard let w = await createViaHome(home, name: "Close", expectFile: "Close.txt") else { return nil }
+        await docReady(w, "Close.txt")
+        return w
     }
 }

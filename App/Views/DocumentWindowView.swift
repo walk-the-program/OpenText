@@ -164,41 +164,77 @@ struct WindowCloseGuard: NSViewRepresentable {
     }
 
     @MainActor
-    final class Coordinator: NSObject, NSWindowDelegate {
+    final class Coordinator {
         let session: DocumentSession
         weak var window: NSWindow?
-        weak var original: NSWindowDelegate?
-        var bypass = false
         init(session: DocumentSession) { self.session = session }
 
         func attach(to w: NSWindow?) {
             guard let w, w !== window else { return }
             window = w
             session.window = w
-            if w.delegate !== self { original = w.delegate; w.delegate = self }
+            WindowGuardDelegate.install(on: w, session: session)
             session.commands.onDirtyChange = { [weak w] dirty in w?.isDocumentEdited = dirty }
         }
+    }
+}
 
-        // Forward everything else to SwiftUI's own delegate.
-        override func responds(to aSelector: Selector!) -> Bool {
-            super.responds(to: aSelector) || (original?.responds(to: aSelector) ?? false)
-        }
-        override func forwardingTarget(for aSelector: Selector!) -> Any? {
-            (original?.responds(to: aSelector) ?? false) ? original : super.forwardingTarget(for: aSelector)
-        }
+/// The one window delegate of a document window: handles close confirmation and passes everything else to the
+/// delegate SwiftUI installed. It lives as long as the window (associated object), keeps SwiftUI's delegate
+/// alive (strong reference) and only forwards selectors that delegate answers, so AppKit can never send a
+/// delegate message that nobody implements. If SwiftUI puts a delegate of its own back, that one becomes the
+/// forwarding target and this object is installed again.
+@MainActor
+final class WindowGuardDelegate: NSObject, NSWindowDelegate {
+    private static var associationKey = 0
+    weak var session: DocumentSession?
+    private(set) var original: NSWindowDelegate?
+    private var observation: NSKeyValueObservation?
+    private var bypass = false
 
-        func windowShouldClose(_ sender: NSWindow) -> Bool {
-            if bypass || !session.hasUnsavedChanges { return original?.windowShouldClose?(sender) ?? true }
-            Task { @MainActor in
-                if await self.session.confirmClose() { self.bypass = true; sender.close() }
-            }
-            return false
+    static func install(on w: NSWindow, session: DocumentSession) {
+        if let existing = objc_getAssociatedObject(w, &associationKey) as? WindowGuardDelegate {
+            existing.session = session
+            existing.ensureInstalled(on: w)
+            return
         }
+        let g = WindowGuardDelegate()
+        g.session = session
+        objc_setAssociatedObject(w, &associationKey, g, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        g.ensureInstalled(on: w)
+        g.observation = w.observe(\.delegate, options: [.new]) { [weak g] w, _ in
+            MainActor.assumeIsolated { g?.ensureInstalled(on: w) }
+        }
+    }
 
-        func windowWillClose(_ notification: Notification) {
-            session.unregister()
-            original?.windowWillClose?(notification)
+    /// Puts this delegate on the window; whatever delegate was there before becomes the forwarding target.
+    func ensureInstalled(on w: NSWindow) {
+        guard w.delegate !== self else { return }
+        if let other = w.delegate { original = other }
+        w.delegate = self
+    }
+
+    override func responds(to aSelector: Selector!) -> Bool {
+        super.responds(to: aSelector) || (original?.responds(to: aSelector) ?? false)
+    }
+
+    override func forwardingTarget(for aSelector: Selector!) -> Any? {
+        if let original, original.responds(to: aSelector) { return original }
+        return super.forwardingTarget(for: aSelector)
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        guard let session, !bypass, session.hasUnsavedChanges else { return original?.windowShouldClose?(sender) ?? true }
+        Task { @MainActor in
+            if await session.confirmClose() { self.bypass = true; sender.close() }
         }
+        return false
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        session?.unregister()
+        original?.windowWillClose?(notification)
+        observation = nil
     }
 }
 

@@ -1,5 +1,39 @@
 # Handoff log
 
+## 2026-11-10 (overnight) · Mesh Gradient redesign, PDF editing tools, second audit
+
+**Did:**
+- **MESH-1, the new design** (BUILD-PACK.md is now the Mesh Gradient pack; Soft Form is archived in docs/):
+  - Headings are Plus Jakarta Sans, the setup title is Plus Jakarta Sans Light, body text is Inter and mono is Geist Mono. Inter Tight is gone, which was the "squished" look.
+  - Cards are white with a hairline. The primary button and the selected segment use the gradient.
+  - Springs on presses and selections. The selection pill slides, cards lift on hover, content staggers in on open, and wrong passwords shake. Reduce Motion turns all of it off.
+  - The setup window is the welcome screen, with the brand tagline and accent band.
+  - Decision recorded as D-022.
+- **PDF-1, the PDF tools:**
+  - Click a signature, text box or markup to select it. Drag to move, use the corner handles to resize (signatures keep their ratio), Delete removes it, and arrow keys nudge it.
+  - Sign drops the saved signature already selected. A new Text tool adds an editable text box.
+  - Everything is undoable with ⌘Z.
+  - Save burns signatures and text into the file while the window keeps them editable.
+  - Page tools: multi-select thumbnails, rotate left or right, insert from file, extract, delete.
+  - New PDF menu.
+- **AUD2-1, the audit:** see docs/review/2026-11-10-audit.md. It has 8 findings, all fixed.
+
+**Verified:**
+- `swift test`: Kit 49, UI 68, Logic 28, Design 4, all passing.
+- I looked at the light and dark snapshots of Home, setup, the editor, convert, the lock screen and the PDF reader.
+- `scripts/selftest.sh` passes 12 scenarios: all launch and open scenarios, plus the new pdf-sign-move and pdf-text-box.
+  - pdf-sign-move posts real mouse and key events through AppKit's queue: drag, handle resize, Delete, undo, then save with the pixels checked.
+  - The other 14 click scenarios fail only because Claude is full-screen on the display, which hides an off-screen app's windows from the accessibility API. The pre-redesign commit fails the same way right now (worktree check), and it passed all 24 earlier the same night.
+- The final build is installed as the only copy at /Applications/OpenText.app. Walker's running copy was quit cleanly first and was not relaunched.
+
+**Decided:**
+- The phone type scale is translated to the Mac: body 14, title 22, display 30.
+- Springs instead of the pack's ease-out, because Walker asked for bouncy.
+- Signatures are burned in on save, not saved as annotations, so every viewer shows them.
+- The test harness posts events through `NSApp.postEvent`, so undo grouping matches real input.
+
+**Next:** Run `scripts/selftest.sh` once no app is full-screen, to cover the 14 accessibility-based scenarios on the new look.
+
 ## 2026-11-09 (night) · Dead buttons, resize, click-driven self-test
 
 **Did:** Fixed every grey button (SecondaryActionButtonStyle swapped views on press, so clicks were cancelled), the document-window delegate proxy (weak original → unrecognized-selector exceptions on resize/focus), Touch ID check per redraw, Finish setup (off-screen saved frames; windows now re-centered), Turn on… (official FinderSync API), Make default (failures shown). Added: Create closes Home, ⌘S on any editable doc, click-the-title rename, word count top-right with the bottom bar removed. Commits BTN-1a…1i, BTN-2.

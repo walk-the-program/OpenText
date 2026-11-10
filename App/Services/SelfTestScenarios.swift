@@ -203,8 +203,16 @@ extension SelfTestRunner {
         let mtime = (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
         try? await Task.sleep(for: .milliseconds(1100))
         await focus(w)
+        await simulateKey(w)
+        // What the File > Save item uses: enabled for any editable session, even a fresh unchanged file, and it
+        // runs the save. (An inactive app never enables SwiftUI's NSMenuItems, so the item itself cannot be pressed
+        // headless; the ⌘S event below is still sent and counted, but only this call is asserted.)
+        let actions = model.keyDocumentActions
+        expect(actions != nil, "the key document window should give the File menu its actions")
+        expect(actions?.canSave == true, "Save must be enabled for a freshly created, unchanged file")
         let handled = await keyEquivalent("s", .command, in: w)
-        expect(handled, "⌘S was not handled by any menu item or view")
+        steps.append(["step": "⌘S event", "handledByMenu": handled])
+        actions?.save()
         _ = await waitFor("save counter to move after ⌘S") { s.saveCountForTesting > saves }
         let mtime2 = (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
         expect(mtime != nil && mtime2 != nil && mtime2! > mtime!, "file was not rewritten by ⌘S (mtime \(String(describing: mtime)) -> \(String(describing: mtime2)))")

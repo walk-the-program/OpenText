@@ -29,6 +29,7 @@ enum SelfTest {
         guard enabled else { return }
         NSApplication.shared.setActivationPolicy(.accessory)
         SelfTestExceptions.install()
+        SelfTestKeyWindow.install()
         let nc = NotificationCenter.default
         for name in [NSWindow.didBecomeMainNotification, NSWindow.didBecomeKeyNotification] {
             nc.addObserver(forName: name, object: nil, queue: .main) { n in

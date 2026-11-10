@@ -134,6 +134,21 @@ extension SelfTestRunner {
         steps.append(["step": "ax \(step)", "elements": await axElements(in: window).map(\.summary)])
     }
 
+    // MARK: key window
+
+    /// Makes `w` look like the key window of an active app to AppKit and SwiftUI (menu items and focused values
+    /// follow the key window), without activating the app or touching the user's frontmost app.
+    func simulateKey(_ w: NSWindow) async {
+        SelfTestKeyWindow.current = w
+        await inRunLoop {
+            let nc = NotificationCenter.default
+            nc.post(name: NSApplication.didBecomeActiveNotification, object: NSApp)
+            nc.post(name: NSWindow.didBecomeMainNotification, object: w)
+            nc.post(name: NSWindow.didBecomeKeyNotification, object: w)
+        }
+        try? await Task.sleep(for: .milliseconds(200))
+    }
+
     // MARK: running risky AppKit calls
 
     /// Runs `work` as its own run-loop callout, so an exception thrown inside is caught by AppKit (and recorded)
@@ -256,5 +271,25 @@ extension SelfTestRunner {
         }
         await clickScreenPoint(NSPoint(x: hit.frame.midX, y: hit.frame.midY), in: w)
         await replaceText(with: text, in: w)
+    }
+}
+
+/// The one window the self-test pretends is key (see `simulateKey`).
+@MainActor
+enum SelfTestKeyWindow {
+    static weak var current: NSWindow?
+
+    static func install() {
+        func swap(_ cls: AnyClass, _ name: String, _ block: Any) {
+            if let m = class_getInstanceMethod(cls, NSSelectorFromString(name)) { method_setImplementation(m, imp_implementationWithBlock(block)) }
+        }
+        let isKey: @convention(block) (NSWindow) -> Bool = { w in MainActor.assumeIsolated { w === current } }
+        swap(NSWindow.self, "isKeyWindow", isKey)
+        swap(NSWindow.self, "isMainWindow", isKey)
+        let keyWindow: @convention(block) (NSApplication) -> NSWindow? = { _ in MainActor.assumeIsolated { current } }
+        swap(NSApplication.self, "keyWindow", keyWindow)
+        swap(NSApplication.self, "mainWindow", keyWindow)
+        let active: @convention(block) (NSApplication) -> Bool = { _ in MainActor.assumeIsolated { current != nil } }
+        swap(NSApplication.self, "isActive", active)
     }
 }

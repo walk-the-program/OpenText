@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 import OpenTextKit
 import OpenTextUI
@@ -24,6 +25,11 @@ final class AppModel: ObservableObject {
     /// Finder "Lock" lands here; the matching document window shows its lock sheet.
     @Published var lockRequest: URL?
 
+    /// The document window that is key (or main) right now. File menu items fall back to it when SwiftUI has
+    /// not published a focused scene value yet, which is the case for a window that was just created.
+    private(set) var keyDocument: DocumentSession?
+    private var keyDocumentChange: AnyCancellable?
+
     private var openDocument: ((URL) -> Void)?
     private var openNamed: ((String) -> Void)?
     /// AppKit delivers application(_:open:) before applicationDidFinishLaunching. An open that arrives first means
@@ -48,6 +54,12 @@ final class AppModel: ObservableObject {
             HotkeyManager.shared.start { [weak self] in self?.showQuickCreate() }
             syncHotkeyFromFile()
         }
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didBecomeMainNotification,
+                     NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refreshKeyDocument() }
+            }
+        }
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.reloadSettingsFromDisk() }
@@ -61,6 +73,19 @@ final class AppModel: ObservableObject {
             if !settings.setupShown { update { $0.setupShown = true } }
         }
     }
+
+    /// Re-reads which document window is key and re-publishes whenever its state (saved, busy, ...) changes.
+    func refreshKeyDocument() {
+        let w = NSApp.keyWindow ?? NSApp.mainWindow
+        let session = w.flatMap { win in DocumentSession.openSessions.first { $0.window === win } }
+        guard session !== keyDocument else { return }
+        keyDocument = session
+        keyDocumentChange = session?.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
+        objectWillChange.send()
+    }
+
+    /// Menu actions for the key document window; nil when none is key.
+    var keyDocumentActions: DocActions? { keyDocument.map { DocActions(session: $0, model: self) } }
 
     /// The permanent bridge window attaches once; it is never closed, so these actions stay live.
     func attach(openDocument: @escaping (URL) -> Void, openNamed: @escaping (String) -> Void) {

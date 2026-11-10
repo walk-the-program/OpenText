@@ -13,6 +13,14 @@ struct DocActions {
     var canRevert: Bool
     var revert: () -> Void
 }
+extension DocActions {
+    /// The menu's view of one document session.
+    @MainActor init(session: DocumentSession, model: AppModel) {
+        self.init(canSave: session.canSave, save: { Task { await session.save() } },
+                  convert: session.requestConvert, lock: session.requestLock,
+                  canRevert: session.canRevert, revert: session.requestRevert)
+    }
+}
 struct DocActionsKey: FocusedValueKey { typealias Value = DocActions }
 extension FocusedValues {
     var docActions: DocActions? {
@@ -106,9 +114,7 @@ struct DocumentWindowView: View {
         .navigationTitle(session.title)
         .background(WindowCloseGuard(session: session))
         .focusedSceneValue(\.documentCommands, session.commands)
-        .focusedSceneValue(\.docActions, DocActions(canSave: session.canSave, save: { Task { await session.save() } },
-                                                    convert: session.requestConvert, lock: session.requestLock,
-                                                    canRevert: session.canRevert, revert: session.requestRevert))
+        .focusedSceneValue(\.docActions, DocActions(session: session, model: model))
         .sheet(item: $session.sheet) { sheet in
             switch sheet {
             case .convert:

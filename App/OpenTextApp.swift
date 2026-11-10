@@ -80,6 +80,10 @@ struct OpenTextApp: App {
         .handlesExternalEvents(matching: [])
     }
 
+    /// The focused document's actions; a window that was just created has no focused scene value yet, so the key
+    /// document window stands in (otherwise ⌘S on a fresh file would be disabled).
+    private var activeDoc: DocActions? { doc ?? model.keyDocumentActions }
+
     private func item(_ title: String, _ c: DocumentCommands.Command, _ key: KeyEquivalent,
                       _ mods: EventModifiers = .command) -> some View {
         Button(title) { cmds?.perform(c) }
@@ -96,10 +100,10 @@ struct OpenTextApp: App {
         }
         CommandGroup(after: .newItem) {
             Divider()
-            Button("Save") { doc?.save() }.keyboardShortcut("s").disabled(!(doc?.canSave ?? false))
-            Button("Revert to Saved…") { doc?.revert() }.disabled(!(doc?.canRevert ?? false))
-            Button("Convert…") { doc?.convert() }.keyboardShortcut("e", modifiers: [.command, .shift]).disabled(doc == nil)
-            Button("Lock…") { doc?.lock() }.keyboardShortcut("l", modifiers: [.command, .control]).disabled(doc == nil)
+            Button("Save") { activeDoc?.save() }.keyboardShortcut("s").disabled(!(activeDoc?.canSave ?? false))
+            Button("Revert to Saved…") { activeDoc?.revert() }.disabled(!(activeDoc?.canRevert ?? false))
+            Button("Convert…") { activeDoc?.convert() }.keyboardShortcut("e", modifiers: [.command, .shift]).disabled(activeDoc == nil)
+            Button("Lock…") { activeDoc?.lock() }.keyboardShortcut("l", modifiers: [.command, .control]).disabled(activeDoc == nil)
         }
         CommandGroup(after: .textEditing) {
             item("Find", .find, "f")

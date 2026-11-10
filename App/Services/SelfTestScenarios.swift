@@ -1,6 +1,7 @@
 import AppKit
 import OpenTextKit
 import OpenTextUI
+import PDFKit
 
 /// Click-driven scenarios. Every action is a real mouse or key event delivered through `NSWindow.sendEvent`
 /// at the position the accessibility tree reports, and every scenario asserts an observable effect.
@@ -9,7 +10,7 @@ extension SelfTestRunner {
     static let clickScenarios: Set<String> = [
         "home-open-panel", "home-controls", "home-finish-setup", "setup-buttons", "home-create-closes", "doc-save",
         "doc-rename", "doc-resize", "lock-cancel", "convert-cancel", "convert-run", "quick-create", "doc-toolbar",
-        "doc-close-prompt",
+        "doc-close-prompt", "pdf-sign-move", "pdf-text-box",
     ]
 
     func runClickScenario(_ name: String) async {
@@ -28,6 +29,8 @@ extension SelfTestRunner {
         case "quick-create": await quickCreate()
         case "doc-toolbar": await docToolbar()
         case "doc-close-prompt": await docClosePrompt()
+        case "pdf-sign-move": await pdfSignMove()
+        case "pdf-text-box": await pdfTextBox()
         default: failures.append("unknown click scenario \(name)")
         }
     }
@@ -506,5 +509,101 @@ extension SelfTestRunner {
         await docReady(w, "Close.txt")
         return w
     }
-}
 
+    // MARK: PDF editing
+
+    /// A one-page 300x400 PDF with a line of text, written into the self-test folder.
+    private func makePDF(_ name: String) -> URL? {
+        guard let dir = dirURL else { return nil }
+        let url = dir.appendingPathComponent(name)
+        var box = CGRect(x: 0, y: 0, width: 300, height: 400)
+        guard let ctx = CGContext(url as CFURL, mediaBox: &box, nil) else { return nil }
+        ctx.beginPDFPage(nil)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "Contract", attributes: [.font: NSFont.systemFont(ofSize: 20)]))
+        ctx.textPosition = CGPoint(x: 30, y: 350)
+        CTLineDraw(line, ctx)
+        ctx.endPDFPage()
+        ctx.closePDF()
+        return url
+    }
+
+    private func pdfWindow(_ name: String) async -> (NSWindow, DocumentSession, PDFView)? {
+        guard let url = makePDF(name) else { failures.append("could not write \(name)"); return nil }
+        _ = await waitFor("home window") { windows(.home).count == 1 }
+        model.openFile(url)
+        guard await waitFor("PDF window \(name)", timeout: 8, { doc(named: name) != nil }), let w = doc(named: name),
+              let s = session(named: name) else { return nil }
+        await focus(w)
+        func find(_ v: NSView) -> PDFView? { (v as? PDFView) ?? v.subviews.lazy.compactMap(find).first }
+        guard await waitFor("PDF view in \(name)", { w.contentView.flatMap(find) != nil }), let pv = w.contentView.flatMap(find) else { return nil }
+        _ = await waitFor("PDF commands registered") { s.commands.isAvailable(.sign) }
+        return (w, s, pv)
+    }
+
+    /// Window point of a page-space point.
+    private func windowPoint(_ p: CGPoint, on page: PDFPage, in pv: PDFView) -> NSPoint {
+        pv.convert(pv.convert(p, from: page), to: nil)
+    }
+
+    /// Sign by real click, drag the signature by real mouse events, resize it by its corner handle, delete it with
+    /// the Delete key, undo through the PDF view's undo manager, save, and check the saved file has it burned in.
+    private func pdfSignMove() async {
+        // A red signature in the self-test signature file (never the user's).
+        let sig = NSImage(size: NSSize(width: 200, height: 60))
+        sig.lockFocus(); NSColor.red.setFill(); NSRect(x: 0, y: 0, width: 200, height: 60).fill(); sig.unlockFocus()
+        if let tiff = sig.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+            try? FileManager.default.createDirectory(at: SignatureStore.fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? png.write(to: SignatureStore.fileURL)
+        }
+        guard let (w, s, pv) = await pdfWindow("Sign.pdf"), let page = s.pdf?.page(at: 0) else { return }
+        // Menu path (PDF > Sign); the toolbar button calls the same model method.
+        s.commands.perform(.sign)
+        guard await waitFor("signature placed", { page.annotations.contains { $0 is ImageStampAnnotation } }),
+              let stamp = page.annotations.first(where: { $0 is ImageStampAnnotation }) else { return }
+        let before = stamp.bounds
+        // Drag it 40 points right and 60 down (view points).
+        let from = windowPoint(CGPoint(x: before.midX, y: before.midY), on: page, in: pv)
+        await dragInWindow(from: from, to: NSPoint(x: from.x + 40, y: from.y - 60), in: w)
+        let moved = stamp.bounds
+        expect(moved.minX > before.minX + 5 && moved.minY < before.minY - 5, "signature did not move with the drag: \(before) -> \(moved)")
+        expect(abs(moved.width - before.width) < 0.5, "moving changed the size")
+        // Resize by the top-right handle.
+        let corner = windowPoint(CGPoint(x: moved.maxX, y: moved.maxY), on: page, in: pv)
+        await dragInWindow(from: corner, to: NSPoint(x: corner.x + 50, y: corner.y + 15), in: w)
+        let resized = stamp.bounds
+        expect(resized.width > moved.width + 5, "handle drag did not resize: \(moved) -> \(resized)")
+        expect(abs(resized.width / resized.height - moved.width / moved.height) < 0.02, "signature lost its aspect ratio")
+        expect(abs(resized.minX - moved.minX) < 0.5 && abs(resized.minY - moved.minY) < 0.5, "opposite corner moved")
+        // Delete key removes it; the window's undo (through the PDF view) brings it back.
+        await pressKey(code: 51, chars: "\u{7f}", in: w)
+        expect(!page.annotations.contains { $0 === stamp }, "Delete did not remove the selected signature")
+        let undo = w.firstResponder?.undoManager
+        expect(undo?.canUndo == true, "no undo available from the PDF view")
+        await inRunLoop { undo?.undo() }
+        expect(page.annotations.contains { $0 === stamp } && stamp.bounds == resized, "undo did not restore the signature: \(stamp.bounds) vs \(resized)")
+        // Save: the file gets it burned in, the window keeps it editable.
+        await s.save()
+        guard let saved = PDFDocument(url: s.url), let sp = saved.page(at: 0) else { failures.append("saved PDF unreadable"); return }
+        expect(!sp.annotations.contains { $0.type == "Stamp" }, "saved file still has a loose stamp annotation")
+        let img = sp.thumbnail(of: CGSize(width: 300, height: 400), for: .cropBox)
+        if let tiff = img.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
+            let sx = CGFloat(rep.pixelsWide) / 300, sy = CGFloat(rep.pixelsHigh) / 400
+            let c = rep.colorAt(x: Int(resized.midX * sx), y: rep.pixelsHigh - 1 - Int(resized.midY * sy))?.usingColorSpace(.sRGB)
+            expect((c?.redComponent ?? 0) > 0.8 && (c?.greenComponent ?? 1) < 0.3, "saved page has no signature where it was left (\(String(describing: c)))")
+        }
+        expect(page.annotations.contains { $0 === stamp }, "saving burned the signature into the open window too")
+    }
+
+    /// Text tool by real click, type into the box, Return commits; saved file contains the text.
+    private func pdfTextBox() async {
+        guard let (w, s, _) = await pdfWindow("Text.pdf"), let page = s.pdf?.page(at: 0) else { return }
+        s.commands.perform(.addText)        // PDF > Add Text Box
+        guard await waitFor("text box editor", { w.firstResponder is NSTextView }) else { return }
+        await replaceText(with: "Signed off", in: w)
+        await pressReturn(in: w)
+        guard await waitFor("text box committed", { page.annotations.contains { ($0 as? TextBoxAnnotation)?.text == "Signed off" } }) else { return }
+        await s.save()
+        let text = PDFDocument(url: s.url)?.page(at: 0)?.string ?? ""
+        expect(text.contains("Signed off"), "saved PDF does not contain the text box: \(text)")
+    }
+}

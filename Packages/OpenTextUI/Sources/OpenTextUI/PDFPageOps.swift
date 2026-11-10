@@ -85,16 +85,57 @@ public enum PDFPageOps {
         return CGRect(x: pageBounds.midX - width / 2, y: pageBounds.minY + pageBounds.height * 0.18, width: width, height: height)
     }
 
-    /// PDFKit does not write custom-drawn annotations to disk. Call before `document.write(to:)`: every page
-    /// carrying an `ImageStampAnnotation` is re-drawn (original content kept as vectors) with the image baked in.
-    /// Returns the number of pages rewritten.
+    /// Copies of the given pages (in order) as a new document, with signatures and text boxes burned in.
+    public static func extract(pages indexes: [Int], from document: PDFDocument) -> PDFDocument {
+        let out = PDFDocument()
+        // Re-read the flattened copy from bytes: copies of re-drawn pages lose their content otherwise.
+        guard let flat = flattenedCopy(of: document), let data = flat.dataRepresentation() else { return out }
+        for i in indexes {
+            // One fresh document per page, so the same page can be extracted twice and order is free.
+            guard let source = PDFDocument(data: data), let page = source.page(at: i) else { continue }
+            source.removePage(at: i)
+            out.insert(page, at: out.pageCount)
+        }
+        return out
+    }
+
+    /// The document as it should be written to disk: a copy (outline and metadata kept) with signatures and text
+    /// boxes burned into the pages. The live document is left untouched, so they stay editable in the window.
+    public static func flattenedCopy(of document: PDFDocument) -> PDFDocument? {
+        var own: [(Int, PDFAnnotation)] = []
+        for i in 0..<document.pageCount {
+            guard let page = document.page(at: i) else { continue }
+            for a in page.annotations where a is ImageStampAnnotation || a is TextBoxAnnotation || a is SelectionFrameAnnotation {
+                own.append((i, a))
+                page.removeAnnotation(a)
+            }
+        }
+        defer { for (i, a) in own { document.page(at: i)?.addAnnotation(a) } }
+        guard let data = document.dataRepresentation(), let copy = PDFDocument(data: data) else { return nil }
+        for (i, a) in own {
+            guard let page = copy.page(at: i) else { continue }
+            if let stamp = a as? ImageStampAnnotation {
+                page.addAnnotation(ImageStampAnnotation(image: stamp.image, bounds: stamp.bounds))
+            } else if let box = a as? TextBoxAnnotation {
+                page.addAnnotation(TextBoxAnnotation(text: box.text, bounds: box.bounds, fontSize: box.fontSize))
+            }
+        }
+        flattenStamps(in: copy)
+        return copy
+    }
+
+    /// PDFKit does not write custom-drawn annotations to disk. Call before `document.write(to:)`: the selection
+    /// frame is dropped, and every page carrying an `ImageStampAnnotation` or `TextBoxAnnotation` is re-drawn
+    /// (original content kept as vectors) with them baked in. Returns the number of pages rewritten.
     @discardableResult
     public static func flattenStamps(in document: PDFDocument) -> Int {
         var rewritten = 0
         for index in 0..<document.pageCount {
             guard let page = document.page(at: index) else { continue }
+            page.annotations.filter { $0 is SelectionFrameAnnotation }.forEach(page.removeAnnotation)
             let stamps = page.annotations.compactMap { $0 as? ImageStampAnnotation }
-            guard !stamps.isEmpty, let cgPage = page.pageRef else { continue }
+            let boxes = page.annotations.compactMap { $0 as? TextBoxAnnotation }
+            guard !stamps.isEmpty || !boxes.isEmpty, let cgPage = page.pageRef else { continue }
             var box = page.bounds(for: .mediaBox)
             let data = NSMutableData()
             guard let consumer = CGDataConsumer(data: data), let ctx = CGContext(consumer: consumer, mediaBox: &box, nil) else { continue }
@@ -104,10 +145,11 @@ public enum PDFPageOps {
                 var rect = stamp.image.cgImageRect()
                 if let cg = stamp.image.cgImage(forProposedRect: &rect, context: nil, hints: nil) { ctx.draw(cg, in: stamp.bounds) }
             }
+            for box in boxes { TextBoxAnnotation.drawText(box.attributed, in: box.bounds, context: ctx) }
             ctx.endPDFPage()
             ctx.closePDF()
             guard let new = PDFDocument(data: data as Data)?.page(at: 0) else { continue }
-            for annotation in page.annotations where !(annotation is ImageStampAnnotation) {
+            for annotation in page.annotations where !(annotation is ImageStampAnnotation || annotation is TextBoxAnnotation) {
                 if let copy = annotation.copy() as? PDFAnnotation { new.addAnnotation(copy) }
             }
             // Redrawing yields a fresh page whose crop box is the media box; carry the original boxes over.

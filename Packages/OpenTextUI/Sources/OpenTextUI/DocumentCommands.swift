@@ -16,7 +16,7 @@ public final class DocumentCommands {
 
     public enum Command: Hashable, Sendable {
         // PDF
-        case find, toggleThumbnails, highlight, sign
+        case find, toggleThumbnails, highlight, sign, addText, rotateLeft, insertPages, extractPages, deletePages
         // PDF and image
         case zoomIn, zoomOut, actualSize, rotate
         // Image

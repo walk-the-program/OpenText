@@ -392,9 +392,8 @@ final class DocumentSession: ObservableObject {
             textFormat = .utf8
             return await Task.detached { TextCoding.encode(t, as: .utf8) }.value
         case .pdf:
-            guard let pdf else { throw OpenTextError.writeFailed(url) }
-            PDFPageOps.flattenStamps(in: pdf)
-            let box = UnsafeBox(value: pdf)
+            guard let live = pdf, let flat = PDFPageOps.flattenedCopy(of: live) else { throw OpenTextError.writeFailed(url) }
+            let box = UnsafeBox(value: flat)
             let pw = pdfPassword
             let options: [PDFDocumentWriteOption: Any] = pw.map { [.userPasswordOption: $0, .ownerPasswordOption: $0] } ?? [:]
             let optionBox = UnsafeBox(value: options)

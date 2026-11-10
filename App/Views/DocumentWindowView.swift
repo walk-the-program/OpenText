@@ -80,7 +80,8 @@ struct DocumentWindowView: View {
                     PDFReaderView(document: doc,
                                   actions: PDFReaderActions(onConvert: session.requestConvert,
                                                             loadSignature: SignatureStore.load,
-                                                            saveSignature: SignatureStore.save),
+                                                            saveSignature: SignatureStore.save,
+                                                            clearSignature: SignatureStore.clear),
                                   header: header, commands: session.commands)
                 }
             case .richText:
@@ -277,9 +278,12 @@ struct ReadOnlyTextGuard: NSViewRepresentable {
 /// The drawn signature is saved once (PNG) in Application Support and reused.
 enum SignatureStore {
     static var fileURL: URL {
-        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/OpenText/signature.png")
+        // The self-test never touches the user's saved signature.
+        if SelfTest.enabled, let dir = SelfTest.dir { return URL(fileURLWithPath: dir).appendingPathComponent(".selftest-signature.png") }
+        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/OpenText/signature.png")
     }
     static func load() -> Data? { try? Data(contentsOf: fileURL) }
+    static func clear() { try? FileManager.default.removeItem(at: fileURL) }
     static func save(_ data: Data) {
         try? FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
         try? data.write(to: fileURL, options: .atomic)

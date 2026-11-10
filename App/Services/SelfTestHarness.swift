@@ -187,6 +187,30 @@ extension SelfTestRunner {
         try? await Task.sleep(for: .milliseconds(80))
     }
 
+    /// Hands events to AppKit's own queue: NSApp's loop dispatches them exactly like input from the window
+    /// server, including closing the window's automatic undo group after each one (one action = one undo step).
+    func post(_ events: [NSEvent]) async {
+        await inRunLoop { for e in events { NSApp.postEvent(e, atStart: false) } }
+        try? await Task.sleep(for: .milliseconds(60 + 15 * events.count))
+    }
+
+    /// Real mouse drag: down at `from`, several dragged events, up at `to` (window coordinates).
+    func dragInWindow(from: NSPoint, to: NSPoint, in w: NSWindow, steps: Int = 8) async {
+        var events = [mouseEvent(.leftMouseDown, at: from, in: w)]
+        for i in 1...steps {
+            let t = CGFloat(i) / CGFloat(steps)
+            events.append(mouseEvent(.leftMouseDragged, at: NSPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t), in: w))
+        }
+        events.append(mouseEvent(.leftMouseUp, at: to, in: w))
+        await post(events.compactMap { $0 })
+    }
+
+    /// A plain key press (no modifiers) by key code, sent to the window's first responder.
+    func pressKey(code: UInt16, chars: String, in w: NSWindow) async {
+        await post([keyEvent(.keyDown, chars: chars, code: code, flags: [], in: w),
+                    keyEvent(.keyUp, chars: chars, code: code, flags: [], in: w)].compactMap { $0 })
+    }
+
     /// Clicks the centre of the element with this accessibility label. Records a failure when it cannot be found.
     /// Matches buttons by default; pass `role: nil` for any element.
     @discardableResult

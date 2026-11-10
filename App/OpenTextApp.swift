@@ -93,7 +93,7 @@ struct OpenTextApp: App {
     }
 
     /// One menu set. Where a view also binds the same key (Save, Convert), the menu item wins, so each
-    /// key does one thing. Edit, View, Markdown and Image items drive the view through DocumentCommands; Highlight, Sign, Edit/Preview and Mono stay in the views.
+    /// key does one thing. Edit, View, Markdown, PDF and Image items drive the view through DocumentCommands; Edit/Preview and Mono stay in the views.
     @CommandsBuilder private var menus: some Commands {
         CommandGroup(replacing: .newItem) {
             Button("New…") { model.showQuickCreate() }.keyboardShortcut("n")
@@ -123,6 +123,17 @@ struct OpenTextApp: App {
             item("Italic", .italic, "i")
             item("List", .list, "l", [.command, .shift])
             item("Link", .link, "k")
+        }
+        CommandMenu("PDF") {
+            item("Highlight", .highlight, "h", [.command, .shift])
+            item("Add Text Box", .addText, "t", [.command, .shift])
+            item("Sign", .sign, "s", [.command, .control])
+            Divider()
+            item("Rotate Right", .rotate, "r")
+            item("Rotate Left", .rotateLeft, "r", [.command, .shift])
+            item("Insert Pages from File…", .insertPages, "i", [.command, .shift])
+            item("Extract Selected Pages…", .extractPages, "x", [.command, .shift])
+            item("Delete Selected Pages", .deletePages, .delete, [.command])
         }
         CommandMenu("Image") {
             item("Crop", .crop, "k")

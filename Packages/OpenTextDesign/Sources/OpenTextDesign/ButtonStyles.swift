@@ -29,7 +29,10 @@ public struct PrimaryActionButtonStyle: ButtonStyle {
     }
 }
 
-/// Raised canvas button; pressing flips it to recessed.
+/// Raised canvas button; pressing flips it to recessed, disabled is flat canvas.
+///
+/// The view tree never changes between those states, only the values drawn by `SecondarySurface`. Swapping
+/// branches on `isPressed` would replace the button's view mid-click, and the click would never complete.
 public struct SecondaryActionButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View { StyledBody(configuration: configuration) }
@@ -39,19 +42,39 @@ public struct SecondaryActionButtonStyle: ButtonStyle {
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
         var body: some View {
-            let base = configuration.label
+            let pressed = configuration.isPressed && isEnabled
+            configuration.label
                 .font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
                 .foregroundStyle(Brand.Palette.ink)
                 .padding(.horizontal, 12)
                 .frame(height: Brand.Size.control)
-            Group {
-                if !isEnabled { base.background(RoundedRectangle(cornerRadius: Brand.Radius.button, style: .continuous).fill(Brand.Palette.canvas)) }
-                else if configuration.isPressed { base.recessedSurface(radius: Brand.Radius.button) }
-                else { base.raisedSurface(radius: Brand.Radius.button, depth: .control) }
-            }
-            .focusRing(isFocused, radius: Brand.Radius.button)
-            .opacity(isEnabled ? 1 : 0.45)
+                .background(SecondarySurface(pressed: pressed, enabled: isEnabled))
+                .focusRing(isFocused, radius: Brand.Radius.button)
+                .opacity(isEnabled ? 1 : 0.45)
+                .animation(Brand.Motion.quick, value: pressed)
         }
+    }
+}
+
+/// Canvas surface of the secondary button. One view; `pressed` and `enabled` only change values: the raised
+/// shadows fade out and the recessed inner shading fades in.
+struct SecondarySurface: View {
+    let pressed: Bool
+    let enabled: Bool
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Brand.Radius.button, style: .continuous)
+        let raised = enabled && !pressed
+        shape.fill(Brand.Palette.canvas)
+            .shadow(color: Brand.Palette.glow.opacity(raised ? 1 : 0), radius: 1, x: -1, y: -1)
+            .shadow(color: Brand.Palette.shade.opacity(raised ? 1 : 0), radius: 2, x: 1, y: 1.5)
+            .overlay(
+                ZStack {
+                    shape.stroke(Brand.Palette.shade, lineWidth: 4).blur(radius: 3).offset(x: 1.5, y: 1.5).opacity(pressed ? 0.6 : 0)
+                    shape.stroke(Brand.Palette.glow, lineWidth: 4).blur(radius: 3).offset(x: -1.5, y: -1.5).opacity(pressed ? 0.8 : 0)
+                }
+                .clipShape(shape)
+                .allowsHitTesting(false)
+            )
     }
 }
 

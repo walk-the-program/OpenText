@@ -60,6 +60,12 @@ final class AppModel: ObservableObject {
                 MainActor.assumeIsolated { self?.refreshKeyDocument() }
             }
         }
+        for name in [NSWindow.didBecomeKeyNotification, NSWindow.didBecomeMainNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { n in
+                guard let w = n.object as? NSWindow else { return }
+                MainActor.assumeIsolated { AppModel.bringOnScreen(w) }
+            }
+        }
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.reloadSettingsFromDisk() }
@@ -180,8 +186,18 @@ final class AppModel: ObservableObject {
     /// Home after first-run setup opened it), so a button that "opens" it would appear to do nothing.
     private func raise(_ id: String) {
         DispatchQueue.main.async {
-            NSApp.windows.first { $0.isVisible && ($0.identifier?.rawValue.contains(id) ?? false) }?.makeKeyAndOrderFront(nil)
+            guard let w = NSApp.windows.first(where: { $0.isVisible && ($0.identifier?.rawValue.contains(id) ?? false) }) else { return }
+            Self.bringOnScreen(w)
+            w.makeKeyAndOrderFront(nil)
         }
+    }
+
+    /// A saved frame can point off every screen (an unplugged display, or an old self-test run that wrote
+    /// off-screen frames to the real preferences). Such a window "opens" where nobody can see it, so center it.
+    static func bringOnScreen(_ w: NSWindow) {
+        guard !SelfTest.enabled, !(w is NSPanel), w.isVisible,
+              !NSScreen.screens.contains(where: { $0.visibleFrame.intersects(w.frame.insetBy(dx: 40, dy: 40)) }) else { return }
+        w.center()
     }
 
     func openFile(_ url: URL) {

@@ -224,7 +224,7 @@ private struct PageStill: View {
             let box = page.bounds(for: .cropBox)
             let image = page.thumbnail(of: CGSize(width: 1100, height: 1100 * box.height / box.width), for: .cropBox)
             Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: 860)
-                .overlay(Rectangle().stroke(Brand.Palette.tileLine, lineWidth: 1))
+                .overlay(Rectangle().stroke(Brand.Palette.abHair, lineWidth: 1))
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }

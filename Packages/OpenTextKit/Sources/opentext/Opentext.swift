@@ -39,7 +39,7 @@ func runTool(_ tool: String, _ args: [String: Any], json: Bool) throws {
     else if let o = r["outputs"] as? [String] { o.forEach { print($0) } }
     else if let p = r["path"] as? String { print(p) }
     else if let list = r["formats"] as? [[String: Any]] {
-        for f in list { print("\(f["format"] as! String): \((f["targets"] as! [String]).joined(separator: ", "))") }
+        for f in list { print("\(f["format"] as? String ?? "?"): \((f["targets"] as? [String] ?? []).joined(separator: ", "))") }
     } else if let t = r["targets"] as? [String] { print(t.joined(separator: ", ")) }
     let failures = (r["results"] as? [[String: Any]] ?? []).compactMap { x in
         (x["error"] as? String).map { "\(x["input"] as? String ?? "?"): \($0)" }

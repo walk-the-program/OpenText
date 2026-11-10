@@ -144,14 +144,14 @@ public struct TextEditorView: View {
         fadeTask = Task { @MainActor in
             try? await Task.sleep(for: Self.fadeDelay)
             guard !Task.isCancelled else { return }
-            withAnimation(reduceMotion ? nil : Brand.Motion.slow) { toolbarOpacity = 0 }
+            withAnimation(reduceMotion ? nil : Brand.Motion.enter) { toolbarOpacity = 0 }
         }
     }
 
     private func revealToolbar() {
         fadeTask?.cancel()
         guard toolbarOpacity < 1 else { return }
-        withAnimation(reduceMotion ? nil : Brand.Motion.standard) { toolbarOpacity = 1 }
+        withAnimation(reduceMotion ? nil : Brand.Motion.settle) { toolbarOpacity = 1 }
     }
 }
 

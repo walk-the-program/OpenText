@@ -88,15 +88,22 @@ public enum PDFPageOps {
     /// Copies of the given pages (in order) as a new document, with signatures and text boxes burned in.
     public static func extract(pages indexes: [Int], from document: PDFDocument) -> PDFDocument {
         let out = PDFDocument()
-        // Re-read the flattened copy from bytes: copies of re-drawn pages lose their content otherwise.
-        guard let flat = flattenedCopy(of: document), let data = flat.dataRepresentation() else { return out }
-        for i in indexes {
-            // One fresh document per page, so the same page can be extracted twice and order is free.
-            guard let source = PDFDocument(data: data), let page = source.page(at: i) else { continue }
-            source.removePage(at: i)
-            out.insert(page, at: out.pageCount)
-        }
+        // Re-read the flattened copy from bytes once: copies of re-drawn pages lose their content otherwise.
+        guard let flat = flattenedCopy(of: document), let data = flat.dataRepresentation(),
+              let source = PDFDocument(data: data) else { return out }
+        var seen = Set<Int>()
+        let pages = indexes.filter { seen.insert($0).inserted }.compactMap { source.page(at: $0) }
+        // A page belongs to one document: take them all out of the source, then add them in the asked order.
+        for page in pages { source.removePage(at: source.index(for: page)) }
+        for page in pages { out.insert(page, at: out.pageCount) }
         return out
+    }
+
+    /// True when the document carries signatures or text boxes that must be burned in before writing.
+    public static func needsFlattening(_ document: PDFDocument) -> Bool {
+        (0..<document.pageCount).contains { i in
+            document.page(at: i)?.annotations.contains { $0 is ImageStampAnnotation || $0 is TextBoxAnnotation || $0 is SelectionFrameAnnotation } ?? false
+        }
     }
 
     /// The document as it should be written to disk: a copy (outline and metadata kept) with signatures and text
@@ -173,7 +180,7 @@ public final class ImageStampAnnotation: PDFAnnotation {
         super.init(bounds: bounds, forType: .stamp, withProperties: nil)
     }
 
-    public required init?(coder: NSCoder) { fatalError("not supported") }
+    public required init?(coder: NSCoder) { nil }      // never archived; decoding yields nothing instead of crashing
 
     public override func draw(with box: PDFDisplayBox, in context: CGContext) {
         var rect = image.cgImageRect()

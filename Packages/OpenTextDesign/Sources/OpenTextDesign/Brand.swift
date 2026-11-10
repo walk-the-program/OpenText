@@ -42,12 +42,6 @@ public enum Brand {
         public static let shadowDeep = NSColor.brand(light: "#32325d", dark: "#000000", lightAlpha: 0.28, darkAlpha: 0.26)
         public static let pressedInset = NSColor.brand(light: "#0a2540", dark: "#0a2540", lightAlpha: 0.22, darkAlpha: 0.22)
         public static let topLight = NSColor.brand(light: "#ffffff", dark: "#ffffff", lightAlpha: 0.24, darkAlpha: 0.16)
-        // Older names, kept so existing call sites compile; they map onto the Mesh tokens.
-        public static let primaryPressed = abMHue
-        public static let divider = abHair
-        public static let tileLine = abHair
-        public static let shade = shadowFar
-        public static let glow = topLight
     }
 
     /// Logo-only colour. The citron fold is the same in light and dark and is never a UI fill.
@@ -83,13 +77,6 @@ public enum Brand {
         public static let shadowDeep = Color(nsColor: NSPalette.shadowDeep)
         public static let pressedInset = Color(nsColor: NSPalette.pressedInset)
         public static let topLight = Color(nsColor: NSPalette.topLight)
-        public static let primaryPressed = abMHue
-        public static let divider = abHair
-        public static let tileLine = abHair
-        public static let shade = shadowFar
-        public static let glow = topLight
-        /// Dimmed layer behind modal sheets.
-        public static let scrim = Color.black.opacity(0.38)
 
         /// The one gradient: primary to abMHue. 135° on buttons, 140° on selection.
         public static let gradient = LinearGradient(colors: [primary, abMHue], startPoint: .topLeading, endPoint: .bottomTrailing)
@@ -118,7 +105,6 @@ public enum Brand {
         public static let lg: CGFloat = 16
         public static let xl: CGFloat = 24
         public static let xxl: CGFloat = 32
-        public static let section: CGFloat = 28
     }
 
     public enum Size {
@@ -128,7 +114,6 @@ public enum Brand {
         public static let field: CGFloat = 32
         public static let row: CGFloat = 36
         public static let toolbarHeight: CGFloat = 52
-        public static let statusBarHeight: CGFloat = 28
     }
 
     /// Springs (Walker asked for bouncy, active, premium). Reduce Motion: use `Brand.Motion.resolved`.
@@ -136,9 +121,6 @@ public enum Brand {
         public static let press = Animation.spring(response: 0.22, dampingFraction: 0.62)
         public static let settle = Animation.spring(response: 0.36, dampingFraction: 0.74)
         public static let enter = Animation.spring(response: 0.42, dampingFraction: 0.8)
-        public static let quick = press
-        public static let standard = settle
-        public static let slow = enter
         public static let pressScale: CGFloat = 0.97
 
         /// nil (no movement) when Reduce Motion is on.

@@ -147,6 +147,7 @@ final class DocumentSession: ObservableObject {
         if name.isEmpty { return "The name can't be empty." }
         if name.contains("/") || name.contains(":") { return "Names can't contain / or :." }
         if name.allSatisfy({ $0 == "." }) { return "That isn't a usable name." }
+        if name.hasPrefix(".") { return "A name starting with . would hide the file in Finder." }
         let ext = url.pathExtension
         let target = url.deletingLastPathComponent().appendingPathComponent(ext.isEmpty ? name : "\(name).\(ext)")
         if target == url { return nil }
@@ -392,8 +393,12 @@ final class DocumentSession: ObservableObject {
             textFormat = .utf8
             return await Task.detached { TextCoding.encode(t, as: .utf8) }.value
         case .pdf:
-            guard let live = pdf, let flat = PDFPageOps.flattenedCopy(of: live) else { throw OpenTextError.writeFailed(url) }
-            let box = UnsafeBox(value: flat)
+            guard let live = pdf else { throw OpenTextError.writeFailed(url) }
+            // Only a document with signatures or text boxes needs the (main-thread) burned-in copy; everything
+            // else is serialised off the main thread as before, so big PDFs never freeze the window.
+            let toWrite = PDFPageOps.needsFlattening(live) ? PDFPageOps.flattenedCopy(of: live) : live
+            guard let toWrite else { throw OpenTextError.writeFailed(url) }
+            let box = UnsafeBox(value: toWrite)
             let pw = pdfPassword
             let options: [PDFDocumentWriteOption: Any] = pw.map { [.userPasswordOption: $0, .ownerPasswordOption: $0] } ?? [:]
             let optionBox = UnsafeBox(value: options)

@@ -122,6 +122,13 @@ private func isRed(_ c: NSColor?) -> Bool { guard let c else { return false }; r
         #expect(reopened.page(at: 0)?.string?.contains("Approved by Walker") == true)
     }
 
+    @Test func onlyDocumentsWithOwnAnnotationsNeedFlattening() {
+        let doc = makeDocument(pages: 2)
+        #expect(!PDFPageOps.needsFlattening(doc))
+        PDFPageOps.stampImage(redSignature(), on: doc.page(at: 1)!, bounds: CGRect(x: 10, y: 10, width: 50, height: 15))
+        #expect(PDFPageOps.needsFlattening(doc))
+    }
+
     @Test func pageOperationsUndo() {
         let doc = makeDocument(pages: 3)
         let model = PDFReaderModel(document: doc)

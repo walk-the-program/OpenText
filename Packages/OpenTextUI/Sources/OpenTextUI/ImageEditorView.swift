@@ -138,7 +138,7 @@ public struct ImageEditorView: View {
                 ZStack {
                     Image(nsImage: display).resizable().interpolation(.high)
                         .frame(width: size.width, height: size.height)
-                        .overlay(RoundedRectangle(cornerRadius: 0).stroke(Brand.Palette.tileLine, lineWidth: 1))
+                        .overlay(RoundedRectangle(cornerRadius: 0).stroke(Brand.Palette.abHair, lineWidth: 1))
                     if cropping { cropOverlay(size: size) }
                 }
                 .frame(width: max(size.width + 48, geo.size.width), height: max(size.height + 48, geo.size.height))

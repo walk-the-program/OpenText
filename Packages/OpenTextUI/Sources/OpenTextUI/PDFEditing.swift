@@ -81,7 +81,7 @@ public final class TextBoxAnnotation: PDFAnnotation {
         color = .clear
     }
 
-    public required init?(coder: NSCoder) { fatalError("not supported") }
+    public required init?(coder: NSCoder) { nil }      // never archived; decoding yields nothing instead of crashing
 
     var attributed: NSAttributedString {
         let style = NSMutableParagraphStyle()
@@ -118,7 +118,7 @@ final class SelectionFrameAnnotation: PDFAnnotation {
     var showsHandles = true
 
     init(around rect: CGRect) { super.init(bounds: rect, forType: .square, withProperties: nil) }
-    required init?(coder: NSCoder) { fatalError("not supported") }
+    required init?(coder: NSCoder) { nil }      // never archived; decoding yields nothing instead of crashing
 
     func frame(around rect: CGRect) {
         let pad = handleSize
@@ -192,7 +192,10 @@ final class EditablePDFView: PDFView {
     /// elsewhere then deselects); everything else (text selection, links) stays with PDFKit.
     override func hitTest(_ point: NSPoint) -> NSView? {
         let local = convert(point, from: superview)
-        guard bounds.contains(local), let model else { return super.hitTest(point) }
+        // Only clicks and drags; scrolling, magnify and hover keep PDFKit's own handling.
+        let clicks: Set<NSEvent.EventType> = [.leftMouseDown, .leftMouseDragged, .leftMouseUp, .rightMouseDown]
+        guard let type = NSApp.currentEvent?.type, clicks.contains(type),
+              bounds.contains(local), let model else { return super.hitTest(point) }
         if let editor, editor.frame.contains(local) { return super.hitTest(point) }
         if editor != nil || model.selectedAnnotation != nil { return self }
         guard let page = page(for: local, nearest: false) else { return super.hitTest(point) }

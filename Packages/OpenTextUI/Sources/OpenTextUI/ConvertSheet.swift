@@ -18,29 +18,32 @@ public struct ConvertSheet: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
-            Text("Convert .\(sourceFormat)").brandHeading(20)
+            Text("Convert .\(sourceFormat)").brandHeading(Brand.Fonts.Scale.title)
             Text("A new file is made next to the original. The original is not changed.")
                 .brandBody().foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 0) {
                 ForEach(targets, id: \.self) { target in
                     let on = (selected ?? targets.first) == target
-                    Button { selected = target } label: {
-                        HStack {
-                            Text(Self.title(target)).font(Brand.Fonts.body(13, weight: .semibold))
+                    Button { withAnimation(Brand.Motion.settle) { selected = target } } label: {
+                        HStack(spacing: Brand.Spacing.sm) {
+                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(Brand.Palette.primaryText).opacity(on ? 1 : 0)
+                                .frame(width: 14)
+                            Text(Self.title(target)).font(Brand.Fonts.body(14, weight: .medium))
                             Spacer()
-                            Text(".\(target)").font(Brand.Fonts.body(12, weight: .medium))
+                            Text(".\(target)").font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted)
                         }
-                        .foregroundStyle(on ? Brand.Palette.canvas : Brand.Palette.ink)
-                        .padding(.horizontal, 12).frame(height: 32)
-                        .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous).fill(on ? Brand.Palette.ink : .clear))
+                        .foregroundStyle(Brand.Palette.ink)
+                        .padding(.horizontal, 12).frame(height: Brand.Size.row)
+                        .background(BrandRowBackground(selected: on))
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(PressableStyle())
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
             .padding(6)
-            .recessedSurface(radius: Brand.Radius.lg)
+            .cardSurface(radius: Brand.Radius.lg)
             HStack {
                 Spacer()
                 Button("Cancel", action: onCancel).buttonStyle(.secondaryAction).keyboardShortcut(.cancelAction)
@@ -48,7 +51,7 @@ public struct ConvertSheet: View {
                     .buttonStyle(.primaryAction).keyboardShortcut(.defaultAction).disabled(targets.isEmpty)
             }
         }
-        .padding(Brand.Spacing.xl).frame(width: 380).background(Brand.Palette.canvas)
+        .padding(Brand.Spacing.xl).frame(width: 400).background(Brand.Palette.canvas).brandEnter()
     }
 
     static func title(_ ext: String) -> String {

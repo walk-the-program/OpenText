@@ -55,27 +55,15 @@ public struct QuickCreateView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Name").brandLabel()
                 TextField("Untitled", text: $state.name)
-                    .brandField()
                     .focused($nameFocused)
+                    .brandField(focused: nameFocused)
                     .onSubmit(onCreate)
             }
             gap(Brand.Spacing.lg)
             VStack(alignment: .leading, spacing: 6) {
                 Text("Type").brandLabel()
-                HStack(spacing: 6) {
-                    ForEach(QuickCreateState.formats, id: \.self) { format in
-                        let on = state.format == format
-                        Button { state.format = format } label: {
-                            Text(".\(format)").font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
-                                .foregroundStyle(on ? Brand.Palette.canvas : Brand.Palette.ink)
-                                .frame(maxWidth: .infinity).frame(height: Brand.Size.control)
-                                .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                                    .fill(on ? Brand.Palette.ink : Brand.Palette.canvas))
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(format) file").accessibilityAddTraits(on ? .isSelected : [])
-                    }
-                }
+                BrandSegmentedControl(QuickCreateState.formats, selection: $state.format, fill: true,
+                                      title: { ".\($0)" }, accessibilityTitle: { "\($0) file" })
             }
             gap(Brand.Spacing.lg)
             HStack(spacing: 4) {

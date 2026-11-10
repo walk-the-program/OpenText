@@ -23,7 +23,7 @@ public struct RecoveryKeySheet: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
-            Text("Your recovery key").brandHeading(20)
+            Text("Your recovery key").brandHeading(Brand.Fonts.Scale.title)
             Text("This is the only way to open locked files if you forget your password. It is shown once. Print it or save it somewhere offline.")
                 .brandBody().foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 4), spacing: 10) {

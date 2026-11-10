@@ -19,7 +19,7 @@ struct LockSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
-            Text(title).brandHeading(20)
+            Text(title).brandHeading(Brand.Fonts.Scale.title)
             Text(explanation)
                 .brandBody().foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
             SecureField("Password", text: $password).textFieldStyle(.plain).brandField()
@@ -46,6 +46,7 @@ struct LockSheet: View {
         .padding(Brand.Spacing.xl)
         .frame(width: 400)
         .background(Brand.Palette.canvas)
+        .brandShake(trigger: error)
     }
 
     private func submit() {
@@ -67,7 +68,7 @@ struct PinMismatchSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
-            Text("Your recovery key changed outside OpenText").brandHeading(20)
+            Text("Your recovery key changed outside OpenText").brandHeading(Brand.Fonts.Scale.title)
             Text("The recovery key in settings.json is not the one OpenText saved when you first locked a file. Someone or something edited the file. Locking is paused.")
                 .brandBody().fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 4) {
@@ -97,7 +98,7 @@ struct ChangedOutsideSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
-            Text("Changed outside OpenText").brandHeading(20)
+            Text("Changed outside OpenText").brandHeading(Brand.Fonts.Scale.title)
             Text("\(fileName) was modified by something else since you opened it. Reload to see that version and drop your edits, or keep yours and overwrite it.")
                 .brandBody().fixedSize(horizontal: false, vertical: true)
             HStack {
@@ -119,7 +120,7 @@ struct NoticeCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
-            Text(notice.title).brandHeading(20)
+            Text(notice.title).brandHeading(Brand.Fonts.Scale.title)
             Text(notice.message).brandBody().textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Spacer()

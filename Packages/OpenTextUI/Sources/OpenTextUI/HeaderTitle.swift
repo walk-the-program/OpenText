@@ -11,26 +11,42 @@ struct HeaderTitle: View {
     @State private var editing = false
     @State private var message: String?
     @State private var clearTask: Task<Void, Never>?
+    @State private var hovering = false
 
     var body: some View {
         HStack(spacing: 8) {
             if onRename == nil {
-                Text(title).brandHeading(18).lineLimit(1)
+                Text(title).brandHeading(Brand.Fonts.Scale.title2).lineLimit(1)
             } else if editing {
                 RenameField(initial: title, onFinish: finish)
                     .frame(minWidth: 120, idealWidth: 220, maxWidth: 360)
                     .frame(height: 22)
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .recessedSurface(radius: Brand.Radius.field)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .brandField(focused: true)
+                    .frame(height: 28)
+                    .transition(.scale(scale: 0.96).combined(with: .opacity))
             } else {
-                Button { message = nil; editing = true } label: { Text(title).brandHeading(18).lineLimit(1) }
-                    .buttonStyle(.plain)
+                Button { message = nil; withAnimation(Brand.Motion.press) { editing = true } } label: {
+                    HStack(spacing: 6) {
+                        Text(title).brandHeading(Brand.Fonts.Scale.title2).lineLimit(1)
+                        Image(systemName: "pencil").font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Brand.Palette.muted).opacity(hovering ? 1 : 0)
+                    }
+                    .padding(.horizontal, 6).frame(height: 28)
+                    .background(RoundedRectangle(cornerRadius: Brand.Radius.sm, style: .continuous)
+                        .fill(hovering ? Brand.Palette.abFill : .clear))
+                    .contentShape(Rectangle())
+                    .animation(Brand.Motion.settle, value: hovering)
+                }
+                    .buttonStyle(PressableStyle())
+                    .brandHover($hovering)
                     .accessibilityLabel(title)
                     .accessibilityHint("Click to rename")
             }
             if let message {
                 Text(message).font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
                     .lineLimit(1).fixedSize()
+                    .transition(.move(edge: .leading).combined(with: .opacity))
             }
         }
     }

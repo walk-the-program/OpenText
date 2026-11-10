@@ -5,27 +5,27 @@ import Testing
 @testable import OpenTextDesign
 
 @Suite struct BrandTests {
-    @Test func fontsRegisterAndInterResolves() {
+    @Test func fontsRegisterAndResolve() {
         #expect(Brand.registerFonts())
         for name in Brand.Fonts.PostScript.all {
             let font = CTFontCreateWithName(name as CFString, 13, nil)
             #expect(CTFontCopyPostScriptName(font) as String == name, "\(name) should resolve to itself, not a fallback")
-            #expect(["Inter 18pt", "Inter Tight"].contains(CTFontCopyFamilyName(font) as String))
+            #expect(["Inter 18pt", "Plus Jakarta Sans", "Geist Mono"].contains(CTFontCopyFamilyName(font) as String))
         }
         #expect(Brand.Fonts.nsBody(13, weight: .semibold).fontName == "Inter18pt-SemiBold")
-        #expect(Brand.Fonts.nsHeading().fontName == "InterTight-Regular_SemiBold")
+        #expect(Brand.Fonts.nsHeading().fontName == "PlusJakartaSans-Regular_SemiBold")
+        #expect(Brand.Fonts.nsMono().fontName == "GeistMono-Regular")
     }
 
-    @Test func interTightFamilyIsRegistered() {
+    @Test func headingIsJakartaSemiBoldAndDisplayIsLight() {
         _ = Brand.registerFonts()
-        let families = NSFontManager.shared.availableFontFamilies
-        #expect(families.contains("Inter Tight"))
-        #expect(Brand.Fonts.headingFamily == "Inter Tight")
-        let font = Brand.Fonts.nsHeading(20)
-        #expect(font.familyName == "Inter Tight")
-        // weight axis is at 600, not the 400 default
-        let axes = CTFontCopyVariation(font as CTFont) as? [Int: Double]
-        #expect(axes?.values.contains(600) == true, "variation: \(String(describing: axes))")
+        #expect(NSFontManager.shared.availableFontFamilies.contains("Plus Jakarta Sans"))
+        #expect(!NSFontManager.shared.availableFontFamilies.contains("Inter Tight"))
+        let heading = CTFontCopyVariation(Brand.Fonts.nsHeading(20) as CTFont) as? [Int: Double]
+        #expect(heading?.values.contains(600) == true, "heading variation: \(String(describing: heading))")
+        let light = CTFontCreateWithName(Brand.Fonts.PostScript.displayLight as CFString, 30, nil)
+        let lv = CTFontCopyVariation(light) as? [Int: Double]
+        #expect(lv?.values.contains(300) == true, "display variation: \(String(describing: lv))")
     }
 
     @Test func paletteMatchesBrandJSON() throws {

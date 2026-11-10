@@ -55,13 +55,14 @@ public struct SetupView: View {
 
     public var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.xl) {
-            HStack(alignment: .center, spacing: Brand.Spacing.md) {
-                BrandMark(size: 40)
+            HStack(alignment: .center, spacing: Brand.Spacing.lg) {
+                BrandMark(size: 36)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Set up OpenText").brandHeading(26)
-                    Text("Three quick things. You can change them later.").brandBody().foregroundStyle(Brand.Palette.muted)
+                    WelcomeTitle()
+                    Text("Three quick things to set up OpenText. You can change them later.").brandSecondary(14)
                 }
             }
+            .brandEnter()
             HStack(alignment: .top, spacing: Brand.Spacing.lg) {
                 tile(title: "Make OpenText your default", detail: "Opens images, PDF, .txt and .md. macOS asks you to confirm each type.", done: state.defaultAppsDone, note: state.defaultAppsNote) {
                     Button(state.defaultAppsDone ? "Set again" : "Make default", action: actions.onMakeDefault).buttonStyle(.secondaryAction)
@@ -83,6 +84,7 @@ public struct SetupView: View {
                 Spacer()
                 Button("Done", action: actions.onDone).buttonStyle(.primaryAction).keyboardShortcut(.defaultAction)
             }
+            .brandEnter(delay: 0.12)
         }
         .padding(Brand.Spacing.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -91,16 +93,8 @@ public struct SetupView: View {
 
     private func tile<Control: View>(title: String, detail: String, done: Bool?, note: String? = nil, @ViewBuilder control: () -> Control) -> some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.md) {
-            HStack(spacing: 6) {
-                if let done {
-                    Image(systemName: done ? "checkmark.circle.fill" : "circle").font(.system(size: 14))
-                        .foregroundStyle(done ? Brand.Palette.ink : Brand.Palette.muted)
-                        .accessibilityLabel(done ? "Done" : "Not done yet")
-                }
-                if let done { Text(done ? "Done" : "Not done").font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(done ? Brand.Palette.ink : Brand.Palette.muted) }
-            }
-            .frame(height: 16)
-            Text(title).brandHeading(17).fixedSize(horizontal: false, vertical: true)
+            StatusBadge(done: done).frame(height: 22)
+            Text(title).brandHeading(Brand.Fonts.Scale.title2).fixedSize(horizontal: false, vertical: true)
             Text(detail).font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
             if let note {
                 Text(note).font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.ink).fixedSize(horizontal: false, vertical: true)
@@ -109,8 +103,57 @@ public struct SetupView: View {
             control()
         }
         .padding(20)
-        .frame(maxWidth: .infinity, minHeight: 230, maxHeight: 230, alignment: .topLeading)
-        .raisedSurface(radius: Brand.Radius.card, fill: Brand.Palette.surface)
+        .frame(maxWidth: .infinity, minHeight: 240, maxHeight: 240, alignment: .topLeading)
+        .modifier(HoverCard())
+        .brandEnter(delay: 0.05)
+    }
+}
+
+/// "Done" / "Not done" badge: pill, check in a priTint wash when done, quiet fill when not.
+struct StatusBadge: View {
+    let done: Bool?
+    var body: some View {
+        if let done {
+            HStack(spacing: 5) {
+                Image(systemName: done ? "checkmark" : "circle.dotted").font(.system(size: 10, weight: .bold))
+                Text(done ? "Done" : "Not done").font(Brand.Fonts.body(11, weight: .semibold))
+            }
+            .foregroundStyle(done ? Brand.Palette.ink : Brand.Palette.abMuted)
+            .padding(.horizontal, 9).frame(height: 22)
+            .background(Capsule().fill(done ? Brand.Palette.priTint : Brand.Palette.abFill))
+            .overlay(Capsule().inset(by: 0.5).stroke(done ? Brand.Palette.primary.opacity(0.6) : Brand.Palette.abHair, lineWidth: 1))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(done ? "Done" : "Not done yet")
+            .animation(Brand.Motion.settle, value: done)
+        }
+    }
+}
+
+/// Card that lifts 1pt with a deeper shadow while the pointer is over it.
+struct HoverCard: ViewModifier {
+    var radius: CGFloat = Brand.Radius.card
+    @State private var hovering = false
+    func body(content: Content) -> some View {
+        content.cardSurface(radius: radius, lifted: hovering).brandHover($hovering)
+    }
+}
+
+/// The welcome title: the brand tagline, unchanged, with an accent band low under its last word (BUILD-PACK Part 1).
+struct WelcomeTitle: View {
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text("Fuck ").brandDisplay()
+            Text("Preview.").brandDisplay()
+                .fixedSize()
+                .background(alignment: .bottom) {
+                    GeometryReader { g in
+                        Rectangle().fill(Brand.Palette.accent)
+                            .frame(height: Brand.Fonts.Scale.display * 0.16)
+                            .offset(y: g.size.height * 0.92 - Brand.Fonts.Scale.display * 0.16)
+                    }
+                }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -149,8 +192,8 @@ struct ShortcutField: View {
         HStack(spacing: 8) {
             Text(recording ? "Press the new shortcut" : ShortcutFormat.glyphs(shortcut))
                 .font(Brand.Fonts.body(14, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
-                .padding(.horizontal, 12).frame(height: Brand.Size.control).frame(minWidth: 96, alignment: .leading)
-                .recessedSurface(radius: Brand.Radius.field)
+                .padding(.horizontal, 12).frame(height: Brand.Size.field).frame(minWidth: 96, alignment: .leading)
+                .brandField(focused: recording)
                 .background(ShortcutRecorder(recording: recording) { new in recording = false; if let new { onChange(new) } }.frame(width: 0, height: 0))
             Button(recording ? "Cancel" : "Change") { recording.toggle() }.buttonStyle(.secondaryAction)
         }

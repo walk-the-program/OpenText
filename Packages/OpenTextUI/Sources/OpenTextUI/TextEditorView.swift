@@ -110,15 +110,18 @@ public struct TextEditorView: View {
                     ZStack {
                         if isMarkdown && mode == .preview {
                             ScrollView { MarkdownPreview(markdown: text).padding(.horizontal, 88).padding(.vertical, 44) }
+                                .transition(.opacity.combined(with: .offset(y: 6)))
                         } else {
                             PlainTextView(text: $text, isMarkdown: isMarkdown, monospace: monospace, controller: controller, onTyping: typed)
                                 .padding(.horizontal, 80).padding(.vertical, 8)
+                                .transition(.opacity)
                         }
                     }
+                    .animation(Brand.Motion.settle, value: mode)
                     .frame(maxWidth: 860, maxHeight: .infinity)
-                    .background(Brand.Palette.surface)
-                    .overlay(alignment: .leading) { Rectangle().fill(Brand.Palette.line).frame(width: 1) }
-                    .overlay(alignment: .trailing) { Rectangle().fill(Brand.Palette.line).frame(width: 1) }
+                    .background(Brand.Palette.card)
+                    .overlay(alignment: .leading) { Rectangle().fill(Brand.Palette.abHair).frame(width: 1) }
+                    .overlay(alignment: .trailing) { Rectangle().fill(Brand.Palette.abHair).frame(width: 1) }
                     Spacer(minLength: 0)
                 }
             }
@@ -158,23 +161,7 @@ struct BrandSegmented: View {
     let options: [String]
     @Binding var selection: String
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(options, id: \.self) { option in
-                let on = option == selection
-                Button { selection = option } label: {
-                    Text(option).font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
-                        .foregroundStyle(on ? Brand.Palette.canvas : Brand.Palette.ink)
-                        .padding(.horizontal, 12).frame(height: Brand.Size.control - 4)
-                        .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                            .fill(on ? Brand.Palette.ink : Color.clear))
-                        .contentShape(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(on ? .isSelected : [])
-            }
-        }
-        .padding(2)
-        .recessedSurface(radius: Brand.Radius.button)
+        BrandSegmentedControl(options, selection: $selection, title: { $0 })
     }
 }
 
@@ -284,7 +271,7 @@ enum PlainTextStyler {
     static let size: CGFloat = 15
 
     static func baseFont(monospace: Bool) -> NSFont {
-        monospace ? NSFont.monospacedSystemFont(ofSize: 14, weight: .regular) : Brand.Fonts.nsBody(size)
+        monospace ? Brand.Fonts.nsMono(14) : Brand.Fonts.nsBody(size)
     }
 
     static func baseAttributes(monospace: Bool) -> [NSAttributedString.Key: Any] {
@@ -333,7 +320,7 @@ enum PlainTextStyler {
                 storage.addAttribute(.font, value: Brand.Fonts.nsHeading(pt), range: range)
             case .bold: storage.addAttribute(.font, value: Brand.Fonts.nsBody(size, weight: .semibold), range: span.range)
             case .italic: storage.addAttribute(.obliqueness, value: 0.18, range: span.range)
-            case .code: storage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13.5, weight: .regular), range: span.range)
+            case .code: storage.addAttribute(.font, value: Brand.Fonts.nsMono(13.5), range: span.range)
             }
         }
     }

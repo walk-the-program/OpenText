@@ -29,6 +29,7 @@ enum Snap {
             }
         }
         .frame(width: size.width, height: size.height)
+        .environment(\.brandStaticRendering, true)
         let host = NSHostingView(rootView: content)
         host.frame = CGRect(origin: .zero, size: size)
         host.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -233,7 +234,7 @@ enum Fixture {
         let recents = ["/Users/me/Documents/Lease 2026.pdf", "/Users/me/Desktop/Notes.md", "/Users/me/Downloads/Receipt.png", "/Users/me/Projects/OpenText/README.txt"].map { URL(fileURLWithPath: $0) }
         for dark in [false, true] {
             var qc = QuickCreateState()
-            let size = CGSize(width: 760, height: 480)
+            let size = CGSize(width: 800, height: 520)
             let rep = Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 }), recents: recents, setupIncomplete: true), name: "home", dark: dark, size: size)
             #expect(Snap.inkFraction(rep) > 0.02)
             Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 })), name: "home-empty", dark: dark, size: size)
@@ -245,7 +246,7 @@ enum Fixture {
             var qc = QuickCreateState()
             Snap.render(QuickCreateView(state: Binding(get: { qc }, set: { qc = $0 })), name: "quick-create", dark: dark, center: true)
             var setup = SetupState(defaultAppsDone: true, finderExtensionOn: false, shortcut: "ctrl+opt+n", shortcutWarning: "Clashes with the speech-to-text shortcut.")
-            Snap.render(SetupView(state: Binding(get: { setup }, set: { setup = $0 })), name: "setup", dark: dark, size: CGSize(width: 900, height: 440))
+            Snap.render(SetupView(state: Binding(get: { setup }, set: { setup = $0 })), name: "setup", dark: dark, size: CGSize(width: 940, height: 500))
             Snap.render(LockedFileView(fileName: "Tracy Christmas.otlock", canUseTouchID: true, onUnlock: { _ in }), name: "locked-file", dark: dark)
             Snap.render(ConvertSheet(sourceFormat: "pdf", targets: ["png", "txt", "md"], onConvert: { _ in }).clipShape(RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous)).floatingSurface(radius: Brand.Radius.card).padding(40), name: "convert-sheet", dark: dark, center: true)
             Snap.render(RecoveryKeySheet(displayString: "K7QM-2XD4-9HPR-ZT3W-B6NC-4YVE-JA8F-SGU5").clipShape(RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous)).floatingSurface(radius: Brand.Radius.card), name: "recovery-key-sheet", dark: dark, center: true)

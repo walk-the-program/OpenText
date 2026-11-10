@@ -35,7 +35,7 @@ public struct LockedFileView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Image(systemName: "lock").font(.system(size: 20, weight: .regular)).foregroundStyle(Brand.Palette.ink)
                         .padding(.bottom, 6)
-                    Text("Locked").brandHeading(26)
+                    Text("Locked").brandHeading(Brand.Fonts.Scale.largeTitle)
                     Text(fileName).brandBody().foregroundStyle(Brand.Palette.muted).lineLimit(1).truncationMode(.middle)
                 }
                 VStack(alignment: .leading, spacing: 6) {
@@ -47,7 +47,7 @@ public struct LockedFileView: View {
                             SecureField("", text: $password)
                         }
                     }
-                    .brandField().focused($focused).onSubmit { if canSubmit { onUnlock(submit) } }
+                    .focused($focused).brandField(focused: focused).onSubmit { if canSubmit { onUnlock(submit) } }
                     if let errorMessage {
                         Text(errorMessage).font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
                     }
@@ -62,10 +62,12 @@ public struct LockedFileView: View {
                     }
                 }
                 Button(usingRecoveryKey ? "Use password instead" : "Use recovery key") { usingRecoveryKey.toggle(); focused = true }
-                    .buttonStyle(.plain).font(Brand.Fonts.body(13, weight: .semibold)).underline().foregroundStyle(Brand.Palette.ink)
+                    .buttonStyle(PressableStyle()).font(Brand.Fonts.body(13, weight: .semibold)).underline().foregroundStyle(Brand.Palette.primaryText)
             }
-            .padding(28).frame(width: 360)
-            .raisedSurface(radius: Brand.Radius.card, fill: Brand.Palette.surface)
+            .padding(28).frame(width: 380)
+            .raisedSurface(radius: Brand.Radius.card)
+            .brandShake(trigger: errorMessage)
+            .brandEnter()
         }
         .onAppear { focused = true }
     }

@@ -77,11 +77,11 @@ struct MarkdownPreview: View {
                     }.font(Brand.Fonts.body(15)).foregroundStyle(Brand.Palette.ink)
                 case let .quote(text):
                     HStack(spacing: 10) {
-                        Rectangle().fill(Brand.Palette.line).frame(width: 3)
+                        Capsule().fill(Brand.Palette.primary).frame(width: 3)
                         Text(text).font(Brand.Fonts.body(15)).foregroundStyle(Brand.Palette.muted)
                     }
                 case let .code(code):
-                    Text(code).font(.system(size: 13, design: .monospaced)).foregroundStyle(Brand.Palette.ink)
+                    Text(code).font(Brand.Fonts.mono(13)).foregroundStyle(Brand.Palette.ink)
                         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                         .recessedSurface(radius: Brand.Radius.md, fill: Brand.Palette.canvas)
                 case .rule:

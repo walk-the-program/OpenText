@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The one primary action per window: `Palette.primary` fill, on-primary label, trailing diagonal arrow.
+/// The one primary action per window: gradient pill (primary to abMHue, 135°), on-primary label, trailing arrow
+/// in a white-veiled circle. Press: springs down to 0.97 with a recessed inner shadow. One view, values only.
 public struct PrimaryActionButtonStyle: ButtonStyle {
     public var showsArrow: Bool
     public init(showsArrow: Bool = true) { self.showsArrow = showsArrow }
@@ -11,27 +12,43 @@ public struct PrimaryActionButtonStyle: ButtonStyle {
         let showsArrow: Bool
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @State private var hovering = false
         var body: some View {
-            HStack(spacing: 6) {
+            let pressed = configuration.isPressed && isEnabled
+            let shape = Capsule()
+            HStack(spacing: 8) {
                 configuration.label
-                if showsArrow { Image(systemName: "arrow.up.right").font(.system(size: 11, weight: .semibold)) }
+                if showsArrow {
+                    Image(systemName: "arrow.right").font(.system(size: 10, weight: .bold))
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(Color.white.opacity(0.2)))
+                        .offset(x: hovering && isEnabled ? 2 : 0)
+                }
             }
             .font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
             .foregroundStyle(Brand.Palette.onPrimary)
-            .padding(.leading, 16).padding(.trailing, showsArrow ? 10 : 16)
-            .frame(height: Brand.Size.control)
-            .background(RoundedRectangle(cornerRadius: Brand.Radius.button, style: .continuous)
-                .fill(configuration.isPressed ? Brand.Palette.primaryPressed : Brand.Palette.primary))
+            .padding(.leading, 18).padding(.trailing, showsArrow ? 7 : 18)
+            .frame(height: Brand.Size.button)
+            .background(shape.fill(Brand.Palette.gradient.shadow(.inner(color: pressed ? Brand.Palette.pressedInset : .clear, radius: 3, y: 2)))
+                .shadow(color: Brand.Palette.shadowNear, radius: 1, y: 1)
+                .shadow(color: Brand.Palette.shadowFar, radius: pressed ? 3 : (hovering ? 10 : 8), y: pressed ? 2 : (hovering ? 7 : 5)))
+            .overlay(shape.strokeBorder(Brand.Palette.topLight, lineWidth: 1).mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center)))
+            .contentShape(shape)
+            .scaleEffect(pressed ? Brand.Motion.pressScale : 1)
             .focusRing(isFocused, radius: Brand.Radius.button)
-            .opacity(isEnabled ? 1 : 0.45)
-            .animation(Brand.Motion.quick, value: configuration.isPressed)
+            .saturation(isEnabled ? 1 : 0)
+            .opacity(isEnabled ? 1 : 0.5)
+            .onHover { hovering = $0 }
+            .animation(Brand.Motion.resolved(Brand.Motion.press, reduceMotion: reduceMotion), value: pressed)
+            .animation(Brand.Motion.resolved(Brand.Motion.settle, reduceMotion: reduceMotion), value: hovering)
         }
     }
 }
 
-/// Raised canvas button; pressing flips it to recessed, disabled is flat canvas.
+/// Card-white pill with a fine ink ring; pressing tints it, insets it and springs it down. Disabled is faded.
 ///
-/// The view tree never changes between those states, only the values drawn by `SecondarySurface`. Swapping
+/// The view tree never changes between states, only the values drawn by `SecondarySurface`. Swapping
 /// branches on `isPressed` would replace the button's view mid-click, and the click would never complete.
 public struct SecondaryActionButtonStyle: ButtonStyle {
     public init() {}
@@ -41,40 +58,39 @@ public struct SecondaryActionButtonStyle: ButtonStyle {
         let configuration: Configuration
         @Environment(\.isEnabled) private var isEnabled
         @Environment(\.isFocused) private var isFocused
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
+        @State private var hovering = false
         var body: some View {
             let pressed = configuration.isPressed && isEnabled
             configuration.label
                 .font(Brand.Fonts.body(13, weight: .semibold)).tracking(-0.13)
                 .foregroundStyle(Brand.Palette.ink)
-                .padding(.horizontal, 12)
-                .frame(height: Brand.Size.control)
-                .background(SecondarySurface(pressed: pressed, enabled: isEnabled))
+                .padding(.horizontal, 16)
+                .frame(height: Brand.Size.button)
+                .background(SecondarySurface(pressed: pressed, enabled: isEnabled, hovering: hovering))
+                .contentShape(Capsule())
+                .scaleEffect(pressed ? Brand.Motion.pressScale : 1)
                 .focusRing(isFocused, radius: Brand.Radius.button)
-                .opacity(isEnabled ? 1 : 0.45)
-                .animation(Brand.Motion.quick, value: pressed)
+                .opacity(isEnabled ? 1 : 0.55)
+                .onHover { hovering = $0 }
+                .animation(Brand.Motion.resolved(Brand.Motion.press, reduceMotion: reduceMotion), value: pressed)
+                .animation(Brand.Motion.resolved(Brand.Motion.settle, reduceMotion: reduceMotion), value: hovering)
         }
     }
 }
 
-/// Canvas surface of the secondary button. One view; `pressed` and `enabled` only change values: the raised
-/// shadows fade out and the recessed inner shading fades in.
+/// Surface of the secondary button. One view; `pressed`, `enabled` and `hovering` only change values.
 struct SecondarySurface: View {
     let pressed: Bool
     let enabled: Bool
+    var hovering: Bool = false
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Brand.Radius.button, style: .continuous)
-        let raised = enabled && !pressed
-        shape.fill(Brand.Palette.canvas)
-            .shadow(color: Brand.Palette.glow.opacity(raised ? 1 : 0), radius: 1, x: -1, y: -1)
-            .shadow(color: Brand.Palette.shade.opacity(raised ? 1 : 0), radius: 2, x: 1, y: 1.5)
-            .overlay(
-                ZStack {
-                    shape.stroke(Brand.Palette.shade, lineWidth: 4).blur(radius: 3).offset(x: 1.5, y: 1.5).opacity(pressed ? 0.6 : 0)
-                    shape.stroke(Brand.Palette.glow, lineWidth: 4).blur(radius: 3).offset(x: -1.5, y: -1.5).opacity(pressed ? 0.8 : 0)
-                }
-                .clipShape(shape)
-                .allowsHitTesting(false)
-            )
+        let shape = Capsule()
+        shape.fill((pressed ? Brand.Palette.secTint : Brand.Palette.card)
+                .shadow(.inner(color: pressed ? Brand.Palette.shadowSoft : .clear, radius: 3, y: 2)))
+            .shadow(color: Brand.Palette.shadowNear.opacity(enabled ? 1 : 0), radius: 1, y: 1)
+            .shadow(color: Brand.Palette.shadowSoft.opacity(enabled && !pressed ? 1 : 0), radius: hovering ? 7 : 5, y: hovering ? 4 : 3)
+            .overlay(shape.inset(by: 0.5).stroke(Brand.Palette.ink.opacity(hovering && enabled ? 0.3 : 0.18), lineWidth: 1))
     }
 }
 
@@ -97,7 +113,13 @@ public struct ToolbarItemButtonStyle: ButtonStyle {
                 .padding(.horizontal, 10)
                 .frame(height: Brand.Size.control)
                 .background(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-                    .fill(isActive || configuration.isPressed ? Brand.Palette.secTint : (hovering ? Brand.Palette.secTint.opacity(0.6) : .clear)))
+                    .fill(isActive ? Brand.Palette.priTint : (configuration.isPressed ? Brand.Palette.abFill : (hovering ? Brand.Palette.abFill.opacity(0.7) : .clear))))
+                .overlay(RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
+                    .strokeBorder(Brand.Palette.primary.opacity(isActive ? 0.55 : 0), lineWidth: 1))
+                .scaleEffect(configuration.isPressed ? Brand.Motion.pressScale : 1)
+                .animation(Brand.Motion.press, value: configuration.isPressed)
+                .animation(Brand.Motion.settle, value: hovering)
+                .animation(Brand.Motion.settle, value: isActive)
                 .focusRing(isFocused, radius: Brand.Radius.md)
                 .opacity(isEnabled ? 1 : 0.4)
                 .onHover { hovering = $0 }
@@ -120,7 +142,7 @@ extension ButtonStyle where Self == ToolbarItemButtonStyle {
 extension View {
     /// Visible keyboard focus (only drawn when the system reports focus, i.e. keyboard navigation).
     func focusRing(_ on: Bool, radius: CGFloat) -> some View {
-        overlay(RoundedRectangle(cornerRadius: radius + 3, style: .continuous)
-            .stroke(Brand.Palette.ink, lineWidth: 2).padding(-3).opacity(on ? 1 : 0))
+        overlay(RoundedRectangle(cornerRadius: radius + 3, style: radius >= 100 ? .circular : .continuous)
+            .stroke(Brand.Palette.primaryText, lineWidth: 2).padding(-4).opacity(on ? 1 : 0).allowsHitTesting(false))
     }
 }

@@ -225,7 +225,7 @@ struct ResizeSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
-            Text("Resize").brandHeading(20)
+            Text("Resize").brandHeading(Brand.Fonts.Scale.title)
             HStack(spacing: Brand.Spacing.md) {
                 field("Width", value: Binding(get: { w }, set: { set(width: $0) }))
                 Text("×").foregroundStyle(Brand.Palette.muted).padding(.top, 16)

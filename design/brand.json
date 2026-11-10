@@ -8,46 +8,80 @@
   },
   "fonts": {
     "heading": {
-      "family": "Inter Tight",
+      "family": "Plus Jakarta Sans",
       "weight": "600"
+    },
+    "display": {
+      "family": "Plus Jakarta Sans",
+      "weight": "300"
     },
     "body": {
       "family": "Inter",
       "weight": "400"
+    },
+    "mono": {
+      "family": "Geist Mono",
+      "weight": "400"
     }
   },
   "type": {
-    "heading-size": "20",
-    "body-size": "13",
-    "heading-tracking": "-0.8",
-    "body-tracking": "0"
+    "display-size": "30",
+    "large-title-size": "26",
+    "heading-size": "22",
+    "title2-size": "17",
+    "body-size": "14",
+    "callout-size": "13",
+    "footnote-size": "12",
+    "caption-size": "11",
+    "heading-tracking": "-0.01em",
+    "body-tracking": "0",
+    "label-tracking": "+0.1em"
   },
   "radius": {
-    "sm": "6",
-    "md": "8",
-    "lg": "12"
+    "sm": "8",
+    "md": "10",
+    "lg": "14",
+    "field": "12",
+    "card": "20",
+    "button": "pill"
   },
   "accent-budget": "0.10",
   "light": {
-    "canvas": "#e8eaec",
-    "surface": "#fafbfb",
+    "canvas": "#f5f7f9",
+    "surface": "#ffffff",
     "ink": "#1c2126",
-    "muted": "#63676b",
-    "line": "#c9ccce",
+    "muted": "#686c70",
+    "line": "#d4d7d9",
     "primary": "#98b0cc",
+    "ab-m-hue": "#9493d1",
     "on-primary": "#141414",
     "accent": "#cacd7e",
-    "on-accent": "#141414"
+    "on-accent": "#141414",
+    "pri-tint": "#eaeef4",
+    "sec-tint": "#f2f1f3",
+    "primary-text": "#607081"
   },
   "dark": {
-    "canvas": "#252a2e",
-    "surface": "#33383c",
+    "canvas": "#1c2126",
+    "surface": "#2b3035",
     "ink": "#f5f7f9",
-    "muted": "#a2a5a8",
-    "line": "#44494c",
+    "muted": "#9ea1a5",
+    "line": "#3d4146",
     "primary": "#98b0cc",
+    "ab-m-hue": "#9493d1",
     "on-primary": "#141414",
     "accent": "#cacd7e",
-    "on-accent": "#141414"
-  }
+    "on-accent": "#141414",
+    "pri-tint": "#2b323a",
+    "sec-tint": "#3b3d41",
+    "primary-text": "#98b0cc"
+  },
+  "style": "Mesh Gradient (BUILD-PACK.md), Mac translation",
+  "motion": {
+    "press": "spring 0.22/0.62, scale 0.97",
+    "settle": "spring 0.36/0.74",
+    "enter": "spring 0.42/0.80, opacity + scale 0.98 + 6pt rise",
+    "reduce-motion": "instant"
+  },
+  "gradient": "primary to abMHue (#9493d1), 135deg buttons, 140deg selection"
 }

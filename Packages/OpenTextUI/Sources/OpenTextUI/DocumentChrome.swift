@@ -40,7 +40,7 @@ struct ToolbarRow<Tools: View, Trailing: View>: View {
                 Color.clear.frame(width: header.leadingInset, height: 1)
                 HeaderTitle(title: header.title, onRename: header.onRename)
                 FormatChip(format: header.format, targets: header.targets, onSelect: header.onSwitchFormat)
-                Rectangle().fill(Brand.Palette.line).frame(width: 1, height: 20).padding(.horizontal, 6)
+                Rectangle().fill(Brand.Palette.abHair).frame(width: 1, height: 20).padding(.horizontal, 6)
             }
             HStack(spacing: Brand.Spacing.sm) {
                 tools
@@ -53,13 +53,16 @@ struct ToolbarRow<Tools: View, Trailing: View>: View {
             if let status = header?.status {
                 Text(status)
                     .font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(Brand.Motion.settle, value: status)
                     .lineLimit(1).fixedSize().padding(.leading, Brand.Spacing.sm)
             }
         }
         .padding(.horizontal, 14)
         .frame(height: Brand.Size.toolbarHeight)
-        .background(Brand.Palette.surface)
-        .overlay(alignment: .bottom) { Rectangle().fill(Brand.Palette.line).frame(height: 1) }
+        .background(Brand.Palette.card)
+        .overlay(alignment: .bottom) { Rectangle().fill(Brand.Palette.abHair).frame(height: 1) }
     }
 }
 

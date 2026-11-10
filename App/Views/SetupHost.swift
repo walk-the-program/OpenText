@@ -20,7 +20,7 @@ struct SetupHost: View {
             shortcutRecorder: AnyView(KeyboardShortcuts.Recorder(for: .quickCreate) { _ in
                 model.shortcutRecorded(); refresh()
             }))
-        .frame(width: 900, height: 440)
+        .frame(width: 940, height: 500)
         .onAppear(perform: refresh)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refresh() }
     }

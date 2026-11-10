@@ -270,7 +270,10 @@ extension SelfTestRunner {
             return
         }
         await clickScreenPoint(NSPoint(x: hit.frame.midX, y: hit.frame.midY), in: w)
+        // Typing before the field editor has focus loses the keystrokes: wait for it, then check what arrived.
+        _ = await waitFor("text field '\(label)' to take focus") { (w.firstResponder as? NSTextView)?.delegate is NSTextField }
         await replaceText(with: text, in: w)
+        _ = await waitUntil("text field to show '\(text)'") { await axElements(in: w).contains { $0.role == "AXTextField" && $0.value == text } }
     }
 }
 

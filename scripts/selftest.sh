@@ -63,11 +63,12 @@ failed=0
 # run <scenario> <settings-json-or-"keep"> [with-file|with-dir]
 # A click scenario that finds no windows in the system accessibility tree (OpenText's windows are not on the active
 # Space, e.g. while a full-screen app is in front) is an environment problem, not a result: it is tried again.
+# So is a run during which the user switched to another app (OpenText itself becoming frontmost is never retried).
 run() {
   local attempt
   for attempt in 1 2 3; do
     run_once "$@"
-    [[ $last_note == *AX-UNAVAILABLE* ]] || break
+    [[ $last_note == *AX-UNAVAILABLE* || $last_note == *FRONT-FLAP* ]] || break
     sleep 5
   done
   [[ -n $last_row ]] && rows+=("$last_row")
@@ -111,7 +112,12 @@ run_once() {
   elif ! python3 -I -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["pass"] else 1)' "$out"; then
     res=FAIL; note="$note $(python3 -I -c 'import json,sys; print("; ".join(json.load(open(sys.argv[1]))["failures"]))' "$out")"
   fi
-  [[ $before == "$after" && $after != OpenText ]] || { res=FAIL; note="$note frontmost changed ($before -> $after)"; }
+  if [[ $after == OpenText ]]; then
+    res=FAIL; note="$note OpenText became the frontmost app ($before -> $after)"
+  elif [[ $before != "$after" ]]; then
+    # Another app took over: the user switched apps during the run. Retried by run(); a repeat stays a failure.
+    res=FAIL; note="$note FRONT-FLAP frontmost changed ($before -> $after)"
+  fi
   [[ $res == PASS ]] || failed=1
   last_res=$res last_note=$note last_out=$out last_row="$res|$name|$before|$after|${note# }"
 }

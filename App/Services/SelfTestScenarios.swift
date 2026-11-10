@@ -82,7 +82,10 @@ extension SelfTestRunner {
         if let chip { await click(chip, in: home) }
         await typeIntoField(label: "Untitled", text: name, in: home)
         await click("Create", in: home)
-        _ = await waitFor("document window \(expectFile)") { doc(named: expectFile) != nil }
+        if !(await waitFor("document window \(expectFile)", { doc(named: expectFile) != nil })) {
+            let files = (try? FileManager.default.contentsOfDirectory(atPath: SelfTest.dir ?? "")) ?? []
+            failures.append("after Create: files \(files), windows \(NSApp.windows.map { "\($0.identifier?.rawValue ?? "")|\($0.title)|vis=\($0.isVisible)" })")
+        }
         return doc(named: expectFile)
     }
 

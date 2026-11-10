@@ -234,15 +234,19 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// One code path for quick create, the hotkey window and Finder `new`.
-    func createNew(format: String, name: String, in dir: URL? = nil) {
-        guard let fmt = DocFormat(name: format) else { return }
+    /// One code path for quick create, the hotkey window and Finder `new`. True when the file was created and
+    /// is opening; callers close their own window only then.
+    @discardableResult
+    func createNew(format: String, name: String, in dir: URL? = nil) -> Bool {
+        guard let fmt = DocFormat(name: format) else { return false }
         do {
             let url = try NewFile.create(fmt, name: name, in: dir ?? settings.defaultFolderURL)
             update { $0.lastNewFileFormat = format }
             openFile(url)
+            return true
         } catch {
             showNotice(Notice(title: "Could not create the file", message: error.localizedDescription))
+            return false
         }
     }
 

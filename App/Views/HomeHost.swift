@@ -4,6 +4,7 @@ import OpenTextUI
 /// HomeView wired to AppModel. Shown by code at launch; first run also opens setup from here (this view's environment is live).
 struct HomeHost: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var state = QuickCreateState()
     @State private var recents: [URL] = []
     @State private var setupIncomplete = false
@@ -36,7 +37,10 @@ struct HomeHost: View {
 
     private func create() {
         let folder = URL(fileURLWithPath: (state.folderPath as NSString).expandingTildeInPath, isDirectory: true)
-        model.createNew(format: state.format, name: state.name.isEmpty ? "Untitled" : state.name, in: folder)
+        // The new document opens in its own window; Home has done its job and closes (only if the file was made).
+        if model.createNew(format: state.format, name: state.name.isEmpty ? "Untitled" : state.name, in: folder) {
+            dismissWindow(id: "home")
+        }
     }
 
     private func changeFolder() {

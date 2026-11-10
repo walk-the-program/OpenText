@@ -23,8 +23,8 @@ struct QuickCreateHost: View {
     private func create() {
         let folder = URL(fileURLWithPath: (state.folderPath as NSString).expandingTildeInPath, isDirectory: true)
         let (format, name) = (state.format, state.name.isEmpty ? "Untitled" : state.name)
-        dismiss()           // close first so the popover can never hide the new document window
-        model.createNew(format: format, name: name, in: folder)
+        // The panel closes as soon as the file exists, so it can never hide the new document window.
+        if model.createNew(format: format, name: name, in: folder) { dismiss() }
     }
 
     private func changeFolder() {

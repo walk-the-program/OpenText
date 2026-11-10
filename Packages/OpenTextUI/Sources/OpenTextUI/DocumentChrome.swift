@@ -10,6 +10,8 @@ public struct DocumentHeader {
     public var onSwitchFormat: (String) -> Void
     /// Space kept free at the leading edge for the traffic-light buttons when the title bar is hidden.
     public var leadingInset: CGFloat
+    /// Small muted text at the trailing end of the header ("120 words · Saved", "3 pages"). Set by the document view.
+    public var status: String?
 
     public init(title: String, format: String, targets: [String] = [], leadingInset: CGFloat = 0,
                 onSwitchFormat: @escaping (String) -> Void = { _ in }) {
@@ -45,25 +47,16 @@ struct ToolbarRow<Tools: View, Trailing: View>: View {
             .opacity(toolsOpacity)
             .allowsHitTesting(toolsOpacity > 0.5)
             .accessibilityHidden(toolsOpacity < 0.5)
+            if let status = header?.status {
+                Text(status)
+                    .font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
+                    .lineLimit(1).fixedSize().padding(.leading, Brand.Spacing.sm)
+            }
         }
         .padding(.horizontal, 14)
         .frame(height: Brand.Size.toolbarHeight)
         .background(Brand.Palette.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(Brand.Palette.line).frame(height: 1) }
-    }
-}
-
-struct StatusBar<Content: View>: View {
-    @ViewBuilder var content: Content
-    var alignment: Alignment = .center
-    var body: some View {
-        content
-            .font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
-            .padding(.horizontal, 14)
-            .frame(maxWidth: .infinity, alignment: alignment)
-            .frame(height: Brand.Size.statusBarHeight)
-            .background(Brand.Palette.surface)
-            .overlay(alignment: .top) { Rectangle().fill(Brand.Palette.line).frame(height: 1) }
     }
 }
 

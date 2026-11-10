@@ -28,9 +28,15 @@ public struct RichTextView: View {
         _wordLabel = State(initialValue: WordCounter.label(attributed.string))
     }
 
+    private var headerWithStatus: DocumentHeader? {
+        guard var h = header else { return nil }
+        h.status = "\(wordLabel) · Read-only"
+        return h
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            ToolbarRow(header: header) {
+            ToolbarRow(header: headerWithStatus) {
                 ToolButton(title: "Copy Text") { copyText() }
                 ToolButton(title: "Save as .txt") { actions.onSaveAs("txt") }
                 ToolButton(title: "Save as .md") { actions.onSaveAs("md") }
@@ -51,7 +57,6 @@ public struct RichTextView: View {
                     Spacer(minLength: 0)
                 }
             }
-            StatusBar(content: { Text("\(wordLabel) · Read-only") }, alignment: .trailing)
         }
         .task(id: attributed.length) { wordLabel = WordCounter.label(attributed.string) }
     }

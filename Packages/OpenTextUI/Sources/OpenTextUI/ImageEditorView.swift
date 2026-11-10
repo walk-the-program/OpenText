@@ -67,9 +67,15 @@ public struct ImageEditorView: View {
         zoom = fit > 0 ? min(max(1 / fit, 0.05), 8) : 1
     }
 
+    private var headerWithStatus: DocumentHeader? {
+        guard var h = header else { return nil }
+        h.status = "\(image.width) × \(image.height) px · \(zoom == 1 ? "Fit" : "\(Int(zoom * 100))% of fit")"
+        return h
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            ToolbarRow(header: header) {
+            ToolbarRow(header: headerWithStatus) {
                 ToolButton(title: "Crop", shortcut: key(.init("k", modifiers: .command)), isActive: cropping) { toggleCrop() }
                 ToolButton(title: String(format: "Resize  %d × %d", image.width, image.height), shortcut: key(.init("r", modifiers: [.option, .command]))) { resizing = true }
                 ToolButton(title: "Rotate", shortcut: key(.init("r", modifiers: .command))) { apply(ImageOps.rotate90(image)) }
@@ -83,7 +89,6 @@ public struct ImageEditorView: View {
                     .buttonStyle(.primaryAction).keyboardShortcut("e", modifiers: [.command, .shift])
             }
             canvas
-            StatusBar { Text(verbatim: "\(image.width) × \(image.height) px · \(zoom == 1 ? "Fit" : "\(Int(zoom * 100))% of fit")") }
         }
         .background(Brand.Palette.canvas)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { canvasSize = $0 }

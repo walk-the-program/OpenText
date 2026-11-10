@@ -172,6 +172,12 @@ public struct HTMLView: View {
         self.plain = HTMLSafety.plainText(fromHTML: html)
     }
 
+    private var headerWithStatus: DocumentHeader? {
+        guard var h = header else { return nil }
+        h.status = "\(WordCounter.label(plain)) · Read-only"
+        return h
+    }
+
     public var body: some View {
         if compiled && rules == nil {
             // Safe fallback: the source as plain text, same as before the web view existed.
@@ -180,7 +186,7 @@ public struct HTMLView: View {
                          actions: actions, header: header)
         } else {
             VStack(spacing: 0) {
-                ToolbarRow(header: header) {
+                ToolbarRow(header: headerWithStatus) {
                     ToolButton(title: "Copy Text") { copyText() }
                     ToolButton(title: "Save as .txt") { actions.onSaveAs("txt") }
                     ToolButton(title: "Save as .md") { actions.onSaveAs("md") }
@@ -202,7 +208,6 @@ public struct HTMLView: View {
                         Spacer(minLength: 0)
                     }
                 }
-                StatusBar(content: { Text("\(WordCounter.label(plain)) · Read-only") }, alignment: .trailing)
             }
             .task {
                 guard !compiled else { return }

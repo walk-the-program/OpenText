@@ -75,9 +75,16 @@ public struct TextEditorView: View {
         commands?.register(kind: .text, handlers: h)
     }
 
+    /// Word count and saved state live in the header, top right; the editor has no bottom bar.
+    private var headerWithStatus: DocumentHeader? {
+        guard var h = header else { return nil }
+        h.status = "\(wordLabel) · \(isSaved ? "Saved" : "Edited")"
+        return h
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            ToolbarRow(header: header, toolsOpacity: toolbarOpacity) {
+            ToolbarRow(header: headerWithStatus, toolsOpacity: toolbarOpacity) {
                 if isMarkdown {
                     ToolButton(title: "Heading", shortcut: key(.init("1", modifiers: [.command, .option]))) { controller.perform(.heading) }.disabled(mode == .preview)
                     ToolButton(title: "Bold", shortcut: key(.init("b", modifiers: .command))) { controller.perform(.bold) }.disabled(mode == .preview)
@@ -115,7 +122,6 @@ public struct TextEditorView: View {
                     Spacer(minLength: 0)
                 }
             }
-            StatusBar(content: { Text("\(wordLabel) · \(isSaved ? "Saved" : "Edited")") }, alignment: .trailing)
         }
         .onContinuousHover { phase in if case .active = phase { revealToolbar() } }
         .onAppear { registerCommands() }

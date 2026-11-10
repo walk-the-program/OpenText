@@ -65,9 +65,15 @@ public struct PDFReaderView: View {
         ])
     }
 
+    private var headerWithStatus: DocumentHeader? {
+        guard var h = header else { return nil }
+        h.status = model.statusText
+        return h
+    }
+
     public var body: some View {
         VStack(spacing: 0) {
-            ToolbarRow(header: header) {
+            ToolbarRow(header: headerWithStatus) {
                 ToolButton(title: "Highlight", shortcut: .init("h", modifiers: [.command, .shift])) { model.highlight(actions) }
                 ToolButton(title: "Sign", shortcut: .init("s", modifiers: [.control, .command])) { model.sign(actions) }
                 ToolButton(title: "Rotate", shortcut: key(.init("r", modifiers: .command))) { model.rotate(actions) }
@@ -85,7 +91,6 @@ public struct PDFReaderView: View {
                 }
                 .background(Brand.Palette.canvas)
             }
-            StatusBar { Text(model.statusText) }
         }
         .background(Brand.Palette.canvas)
         .onAppear { registerCommands() }

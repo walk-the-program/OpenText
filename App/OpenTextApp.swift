@@ -30,8 +30,9 @@ struct OpenTextApp: App {
         .defaultLaunchBehavior(.presented)
 
         WindowGroup("OpenText", for: URL.self) { $url in
-            if let url {
-                DocumentWindowView(url: url).environmentObject(model)
+            if let current = url {
+                // A rename moves the file; the scene's URL value follows it, so opening the new path finds this window.
+                DocumentWindowView(url: current, onRenamed: { url = $0 }).environmentObject(model)
             }
         }
         .windowStyle(.hiddenTitleBar)

@@ -231,7 +231,16 @@ extension SelfTestRunner {
 
     private func titleHit(_ w: NSWindow, _ title: String) async -> AXHit? {
         // The title is the first static text/button with that label in the header (top 60pt).
-        await axElements(in: w).first { $0.label == title && $0.frame.minY > w.frame.maxY - 60 }
+        await axElements(in: w).first { $0.label == title && $0.frame.maxY > w.frame.maxY - 60 }
+    }
+
+    /// Clicks the title and waits until the name field exists and is the first responder (focus is set a moment later).
+    private func beginRename(_ w: NSWindow, _ title: String) async -> Bool {
+        guard let t = await titleHit(w, title) else { failures.append("title '\(title)' not found in the header"); return false }
+        await clickScreenPoint(NSPoint(x: t.frame.midX, y: t.frame.midY), in: w)
+        let shown = await waitUntil("title field for '\(title)'") { await axElements(in: w).contains { $0.role == "AXTextField" && $0.value == title } }
+        let focused = await waitFor("title field to take focus") { (w.firstResponder as? NSTextView)?.delegate is NSTextField }
+        return shown && focused
     }
 
     private func docRename() async {
@@ -244,10 +253,7 @@ extension SelfTestRunner {
         await focus(w)
 
         // Escape cancels.
-        guard let t = await titleHit(w, "Notes") else { failures.append("title 'Notes' not found in the header"); return }
-        await clickScreenPoint(NSPoint(x: t.frame.midX, y: t.frame.midY), in: w)
-        let editing = await waitUntil("title field after click") { await axElements(in: w).contains { $0.role == "AXTextField" && $0.value == "Notes" } }
-        if editing {
+        if await beginRename(w, "Notes") {
             let sel = (w.firstResponder as? NSTextView)?.selectedRange()
             expect(sel?.length == 5, "name should be fully selected when editing starts, selection=\(String(describing: sel))")
             await typeText("zzz", in: w)
@@ -257,25 +263,43 @@ extension SelfTestRunner {
                 return !fieldStillThere
             }
             expect(fm.fileExists(atPath: dir.appendingPathComponent("Notes.txt").path), "Escape must keep the file name")
+            _ = await waitUntil("title back after Escape") { await titleHit(w, "Notes") != nil }
+        }
+        // Focus leaving the field (clicking elsewhere) cancels too.
+        if await beginRename(w, "Notes") {
+            await typeText("yyy", in: w)
+            // A click elsewhere ends editing by taking focus away from the field (the document text view takes a
+            // click only in a key window, which a headless run never has), so move focus the same way.
+            await inRunLoop { w.makeFirstResponder(w.contentView) }
+            _ = await waitUntil("title field gone after clicking away") {
+                let fieldStillThere = await axElements(in: w).contains { $0.role == "AXTextField" && $0.value.contains("yyy") }
+                return !fieldStillThere
+            }
+            expect(fm.fileExists(atPath: dir.appendingPathComponent("Notes.txt").path), "clicking away must keep the file name")
+            _ = await waitUntil("title back after clicking away") { await titleHit(w, "Notes") != nil }
         }
 
-        // Duplicate name: keeps the old name and says why.
-        if let t2 = await titleHit(w, "Notes") {
-            await clickScreenPoint(NSPoint(x: t2.frame.midX, y: t2.frame.midY), in: w)
-            _ = await waitUntil("title field") { await axElements(in: w).contains { $0.role == "AXTextField" && $0.value == "Notes" } }
-            await typeText("Other", in: w)
+        // Names that can't be used keep the old name and say why; nothing is overwritten.
+        for (attempt, expected) in [("Other", "already exists"), ("a/b", "can't contain"), ("", "empty")] {
+            guard let t2 = await titleHit(w, "Notes") else { failures.append("title not back after rejected rename '\(attempt)'"); break }
+            _ = t2
+            guard await beginRename(w, "Notes") else { break }
+            if attempt.isEmpty { await inRunLoop { (w.firstResponder as? NSText)?.delete(nil) } } else { await typeText(attempt, in: w) }
             await pressReturn(in: w)
-            _ = await waitUntil("duplicate-name error") { await axHasText(in: w, containing: "already exists") }
-            expect(fm.fileExists(atPath: dir.appendingPathComponent("Notes.txt").path), "duplicate rename must keep Notes.txt")
+            if !(await waitUntil("error '\(expected)' for '\(attempt)'", { await axHasText(in: w, containing: expected) })) {
+                failures.append("top elements: \(await axElements(in: w).filter { $0.frame.maxY > w.frame.maxY - 60 }.map(\.summary))")
+            }
+            expect(fm.fileExists(atPath: dir.appendingPathComponent("Notes.txt").path), "rename to '\(attempt)' must keep Notes.txt")
+            expect(s.url.lastPathComponent == "Notes.txt", "session url changed on a rejected rename")
             expect((try? String(contentsOf: dir.appendingPathComponent("Other.txt"), encoding: .utf8)) == "other", "Other.txt must not be overwritten")
-            await pressEscape(in: w)
+            _ = await waitUntil("title back to normal") { await titleHit(w, "Notes") != nil }
         }
 
         // Real rename.
         _ = await waitUntil("title back to normal") { await titleHit(w, "Notes") != nil }
         if let t3 = await titleHit(w, "Notes") {
-            await clickScreenPoint(NSPoint(x: t3.frame.midX, y: t3.frame.midY), in: w)
-            _ = await waitUntil("title field") { await axElements(in: w).contains { $0.role == "AXTextField" && $0.value == "Notes" } }
+            _ = t3
+            guard await beginRename(w, "Notes") else { return }
             await typeText("renamed", in: w)
             await pressReturn(in: w)
             _ = await waitFor("window title renamed.txt") { doc(named: "renamed.txt") != nil }
@@ -288,6 +312,19 @@ extension SelfTestRunner {
             model.openFile(dir.appendingPathComponent("renamed.txt"))
             try? await Task.sleep(for: .milliseconds(500))
             expect(windows(.document).count == 1, "opening the renamed path created a duplicate window (\(windows(.document).count))")
+        }
+        // A read-only viewer (rich text) shows a plain title: no click-to-rename.
+        let rtf = dir.appendingPathComponent("viewer.rtf")
+        let text = NSAttributedString(string: "viewer")
+        if let data = try? text.data(from: NSRange(location: 0, length: text.length), documentAttributes: [.documentType: NSAttributedString.DocumentType.rtf]) {
+            try? data.write(to: rtf)
+            model.openFile(rtf)
+            if await waitFor("viewer.rtf window", { doc(named: "viewer.rtf") != nil }), let v = doc(named: "viewer.rtf") {
+                await docReady(v, "viewer.rtf")
+                let title = await titleHit(v, "viewer")
+                expect(title != nil, "viewer.rtf title not found")
+                expect(title?.role != "AXButton", "a read-only viewer must not offer click-to-rename (title is \(title?.role ?? "?"))")
+            }
         }
         snapshot("after rename")
     }

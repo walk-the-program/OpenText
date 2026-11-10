@@ -132,6 +132,42 @@ final class DocumentSession: ObservableObject {
         }
     }
 
+    /// Click-to-rename is offered for editable text, PDF and image documents that are settled: not read-only
+    /// viewers, locked or in-memory (unlocked) files, loading or failed ones.
+    var canRename: Bool {
+        guard !inMemory, !isReadOnly, !isFrozen, workLabel == nil else { return false }
+        switch content { case .text, .pdf, .image: return true; default: return false }
+    }
+
+    /// Renames the file next to itself, keeping its extension, after saving anything unsaved so no text is lost.
+    /// Returns a short message when the name can't be used (the file keeps its old name); nil on success. Never overwrites.
+    func rename(toBaseName raw: String) async -> String? {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard canRename else { return "This file can't be renamed right now." }
+        if name.isEmpty { return "The name can't be empty." }
+        if name.contains("/") || name.contains(":") { return "Names can't contain / or :." }
+        if name.allSatisfy({ $0 == "." }) { return "That isn't a usable name." }
+        let ext = url.pathExtension
+        let target = url.deletingLastPathComponent().appendingPathComponent(ext.isEmpty ? name : "\(name).\(ext)")
+        if target == url { return nil }
+        let sameFileDifferentCase = target.lastPathComponent.lowercased() == url.lastPathComponent.lowercased()
+        if !sameFileDifferentCase && FileManager.default.fileExists(atPath: target.path) {
+            return "A file named \(target.lastPathComponent) already exists."
+        }
+        autosave?.cancel()
+        if hasUnsavedChanges, !(await save()) { return "Couldn't save your changes first, so nothing was renamed." }
+        guard canRename else { return "This file can't be renamed right now." }
+        do {
+            try FileManager.default.moveItem(at: url, to: target)
+        } catch {
+            return "Couldn't rename: \(error.localizedDescription)"
+        }
+        url = target
+        recordedMTime = Self.mtime(target)
+        if !SelfTest.enabled { NSDocumentController.shared.noteNewRecentDocumentURL(target) }
+        return nil
+    }
+
     var targets: [String] {
         guard !inMemory, let f = DocFormat(url: url), f != .otlock else { return [] }
         return engine.targets(from: f).map(\.fileExtension)

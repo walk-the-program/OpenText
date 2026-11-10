@@ -12,6 +12,9 @@ public struct DocumentHeader {
     public var leadingInset: CGFloat
     /// Small muted text at the trailing end of the header ("120 words · Saved", "3 pages"). Set by the document view.
     public var status: String?
+    /// Click-to-rename: gets the new name (no extension) and returns a short message when it can't be used, nil
+    /// when the file was renamed. nil here means the title is plain text (read-only, locked, still loading...).
+    public var onRename: ((String) async -> String?)?
 
     public init(title: String, format: String, targets: [String] = [], leadingInset: CGFloat = 0,
                 onSwitchFormat: @escaping (String) -> Void = { _ in }) {
@@ -35,7 +38,7 @@ struct ToolbarRow<Tools: View, Trailing: View>: View {
         HStack(spacing: Brand.Spacing.sm) {
             if let header {
                 Color.clear.frame(width: header.leadingInset, height: 1)
-                Text(header.title).brandHeading(18).lineLimit(1)
+                HeaderTitle(title: header.title, onRename: header.onRename)
                 FormatChip(format: header.format, targets: header.targets, onSelect: header.onSwitchFormat)
                 Rectangle().fill(Brand.Palette.line).frame(width: 1, height: 20).padding(.horizontal, 6)
             }

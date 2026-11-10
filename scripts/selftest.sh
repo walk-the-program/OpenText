@@ -11,7 +11,31 @@ app=$dd/Build/Products/Debug/OpenText.app
 lsr=/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
 work=$(mktemp -d /tmp/opentext-selftest.XXXXXX)
 
+# SwiftUI/AppKit autosave every window frame into the app's real preferences domain (com.walkertracy.opentext), and
+# the parked off-screen frames would end up there. Keep the window-frame keys as they were and put them back at the end.
+bundle=com.walkertracy.opentext
+frames_backup=$work/window-frames.json
+python3 -I - "$bundle" "$frames_backup" <<'PY'
+import plistlib, subprocess, sys, json
+d = plistlib.loads(subprocess.run(["defaults", "export", sys.argv[1], "-"], capture_output=True).stdout or plistlib.dumps({}))
+json.dump({k: v for k, v in d.items() if k.startswith("NSWindow Frame")}, open(sys.argv[2], "w"))
+PY
+restore_frames() {
+python3 -I - "$bundle" "$frames_backup" <<'PY'
+import plistlib, subprocess, sys, json
+bundle, path = sys.argv[1], sys.argv[2]
+try: keep = json.load(open(path))
+except Exception: sys.exit(0)
+d = plistlib.loads(subprocess.run(["defaults", "export", bundle, "-"], capture_output=True).stdout or plistlib.dumps({}))
+for k in [k for k in d if k.startswith("NSWindow Frame")]:
+    subprocess.run(["defaults", "delete", bundle, k], capture_output=True)
+for k, v in keep.items():
+    subprocess.run(["defaults", "write", bundle, k, "-string", v], capture_output=True)
+PY
+}
+
 cleanup() {
+  restore_frames
   pkill -f "$app/Contents/MacOS/OpenText" 2>/dev/null || true
   [[ -n ${KEEP_BUILD:-} ]] && return
   "$lsr" -u "$app" 2>/dev/null || true

@@ -33,11 +33,25 @@ struct DocumentWindowView: View {
     @StateObject private var session: DocumentSession
     @EnvironmentObject private var model: AppModel
 
-    init(url: URL) { _session = StateObject(wrappedValue: DocumentSession(url: url)) }
+    /// Called with the new location after a rename, so the scene's URL value follows the file.
+    private let onRenamed: (URL) -> Void
+
+    init(url: URL, onRenamed: @escaping (URL) -> Void = { _ in }) {
+        _session = StateObject(wrappedValue: DocumentSession(url: url))
+        self.onRenamed = onRenamed
+    }
 
     private var header: DocumentHeader {
-        DocumentHeader(title: (session.title as NSString).deletingPathExtension, format: session.format,
-                       targets: session.targets, leadingInset: 78) { session.switchFormat(to: $0) }
+        var h = DocumentHeader(title: (session.title as NSString).deletingPathExtension, format: session.format,
+                               targets: session.targets, leadingInset: 78) { session.switchFormat(to: $0) }
+        if session.canRename {
+            h.onRename = { [session, onRenamed] name in
+                let problem = await session.rename(toBaseName: name)
+                if problem == nil { onRenamed(session.url) }
+                return problem
+            }
+        }
+        return h
     }
 
     /// Read-only viewer: the chip converts next to the original instead of swapping (and trashing) the file.

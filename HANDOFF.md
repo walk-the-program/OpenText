@@ -1,5 +1,12 @@
 # Handoff log
 
+## 2026-11-09 (night) · Dead buttons, resize, click-driven self-test
+
+**Did:** Fixed every grey button (SecondaryActionButtonStyle swapped views on press, so clicks were cancelled), the document-window delegate proxy (weak original → unrecognized-selector exceptions on resize/focus), Touch ID check per redraw, Finish setup (off-screen saved frames; windows now re-centered), Turn on… (official FinderSync API), Make default (failures shown). Added: Create closes Home, ⌘S on any editable doc, click-the-title rename, word count top-right with the bottom bar removed. Commits BTN-1a…1i, BTN-2.
+**Verified:** scripts/selftest.sh 24/24 PASS via real clicks and key presses through NSWindow.sendEvent, AX tree lookup, any AppKit exception fails the run; swift test all four packages pass. Installed /Applications/OpenText.app.
+**Decided:** Self-test now restores NSWindow Frame prefs on exit; it had been writing off-screen frames into the real defaults domain.
+**Next:** Click scenarios for the PDF and image toolbars.
+
 ## 2026-11-09 (late night) · Deterministic windows, headless self-test, HTML and rtfd
 
 **Did:**

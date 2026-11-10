@@ -146,10 +146,18 @@ final class AppModel: ObservableObject {
 
     private func activate() { if !SelfTest.enabled { NSApp.activate() } }
 
-    func showQuickCreate() { whenReady { [self] in activate(); openNamed?("quick-create") } }
-    func showHome() { whenReady { [self] in activate(); openNamed?("home") } }
-    func showSetup() { whenReady { [self] in activate(); openNamed?("setup") } }
-    func showNotice(_ n: Notice) { notice = n; whenReady { [self] in activate(); openNamed?("notice") } }
+    func showQuickCreate() { whenReady { [self] in activate(); openNamed?("quick-create"); raise("quick-create") } }
+    func showHome() { whenReady { [self] in activate(); openNamed?("home"); raise("home") } }
+    func showSetup() { whenReady { [self] in activate(); openNamed?("setup"); raise("setup") } }
+    func showNotice(_ n: Notice) { notice = n; whenReady { [self] in activate(); openNamed?("notice"); raise("notice") } }
+
+    /// openWindow(id:) on a window that is already open does not always bring it forward (it can sit behind
+    /// Home after first-run setup opened it), so a button that "opens" it would appear to do nothing.
+    private func raise(_ id: String) {
+        DispatchQueue.main.async {
+            NSApp.windows.first { $0.isVisible && ($0.identifier?.rawValue.contains(id) ?? false) }?.makeKeyAndOrderFront(nil)
+        }
+    }
 
     func openFile(_ url: URL) {
         guard FileRouting.kind(for: url) != .unsupported else { NSSound.beep(); return }

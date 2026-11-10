@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 import ObjectiveC
 import OpenTextKit
 
@@ -14,6 +15,8 @@ enum SelfTest {
     /// System-touching calls (default apps, Finder extension settings) are recorded here instead of made.
     nonisolated(unsafe) static var stubCalls: [String] = []
     static func stub(_ name: String) { stubCalls.append(name) }
+    /// What the stubbed makeDefault reports as refused; scenarios change it to test the failure note.
+    nonisolated(unsafe) static var makeDefaultFailures: [UTType] = []
 
     static func arg(_ name: String) -> String? {
         let a = CommandLine.arguments
@@ -146,6 +149,9 @@ final class SelfTestRunner {
 
     func finish() -> Never {
         failures += SelfTestExceptions.recorded.map { "exception: \($0)" }
+        if !failures.isEmpty && AXReader.sawNoWindows {
+            failures.insert("AX-UNAVAILABLE: the system accessibility tree lists no OpenText windows (not on the active Space)", at: 0)
+        }
         let result: [String: Any] = ["scenario": scenario, "steps": steps, "pass": failures.isEmpty, "failures": failures,
                                      "stubCalls": SelfTest.stubCalls]
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) {

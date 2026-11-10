@@ -14,7 +14,7 @@ enum OpenTextSetup {
 
     /// macOS shows its own confirmation per type. Returns the types that failed.
     static func makeDefault() async -> [UTType] {
-        if SelfTest.enabled { SelfTest.stub("makeDefault"); return [] }      // the self-test never changes default apps
+        if SelfTest.enabled { SelfTest.stub("makeDefault"); return SelfTest.makeDefaultFailures }      // the self-test never changes default apps
         var failed: [UTType] = []
         for type in defaultTypes {
             do { try await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type) }
@@ -23,18 +23,23 @@ enum OpenTextSetup {
         return failed
     }
 
+    /// "Couldn't make default for: .png, .tiff" - the extensions of the types macOS refused.
+    static func failureNote(_ failed: [UTType]) -> String? {
+        guard !failed.isEmpty else { return nil }
+        let names = failed.map { $0.preferredFilenameExtension.map { ".\($0)" } ?? $0.identifier }
+        return "Couldn't make default for: " + names.joined(separator: ", ")
+    }
+
     static func isDefault(for type: UTType) -> Bool {
         NSWorkspace.shared.urlForApplication(toOpen: type)?.standardizedFileURL == Bundle.main.bundleURL.standardizedFileURL
     }
 
     static var allDefaults: Bool { defaultTypes.allSatisfy(isDefault) }
 
+    /// Opens the system's own Finder extension list (Login Items & Extensions).
     static func openExtensionSettings() {
         if SelfTest.enabled { SelfTest.stub("finderExtension"); return }      // the self-test never opens System Settings
-        for s in ["x-apple.systempreferences:com.apple.ExtensionsPreferences",
-                  "x-apple.systempreferences:"] {
-            if let u = URL(string: s), NSWorkspace.shared.open(u) { return }
-        }
+        FIFinderSyncController.showExtensionManagementInterface()
     }
 
     static var finderExtensionEnabled: Bool { FIFinderSyncController.isExtensionEnabled }

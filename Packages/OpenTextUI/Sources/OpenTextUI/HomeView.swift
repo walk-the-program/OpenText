@@ -49,7 +49,8 @@ public struct HomeView: View {
                 Button("Finish setup", action: onFinishSetup)
                     .buttonStyle(.plain)
                     .font(Brand.Fonts.body(13, weight: .semibold)).underline(true).foregroundStyle(Brand.Palette.ink)
-                    .frame(height: 20)
+                    .padding(.horizontal, 6).frame(height: 20)
+                    .contentShape(Rectangle())          // the whole link row is clickable, not just the glyphs
             }
         }
         .padding(Brand.Spacing.xl)

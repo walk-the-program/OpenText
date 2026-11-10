@@ -138,12 +138,42 @@ extension SelfTestRunner {
         let makeLabel = await axFind(in: setup, label: "Make default") != nil ? "Make default" : "Set again"
         await click(makeLabel, in: setup)
         _ = await waitFor("Make default reaching the system call", { SelfTest.stubCalls.count > before.count && SelfTest.stubCalls.contains("makeDefault") })
+        expect(!(await axHasText(in: setup, containing: "Couldn't make default")), "no failure note expected when every type succeeded")
+        // Failed types are listed inline instead of being swallowed.
+        SelfTest.makeDefaultFailures = [.tiff, .gif]
+        await click(makeLabel, in: setup)
+        _ = await waitUntil("failure note under Make default") { await axHasText(in: setup, containing: "Couldn't make default for: .tiff, .gif") }
+        SelfTest.makeDefaultFailures = []
+        await click(makeLabel, in: setup)
+        _ = await waitUntil("failure note cleared") {
+            let stillThere = await axHasText(in: setup, containing: "Couldn't make default")
+            return !stillThere
+        }
         let afterMake = SelfTest.stubCalls.count
         let finderLabel = await axFind(in: setup, label: "Turn on…") != nil ? "Turn on…" : "Open Settings"
         await click(finderLabel, in: setup)
         _ = await waitFor("Turn on… reaching the system call", { SelfTest.stubCalls.count > afterMake && SelfTest.stubCalls.last == "finderExtension" })
         await click("Done", in: setup)
         _ = await waitFor("setup window closed by Done") { windows(.setup).isEmpty }
+        // Finish setup works again after Done, and again after the window's own close button.
+        await click("Finish setup", in: home)
+        _ = await waitFor("setup window reopened by Finish setup after Done") { windows(.setup).count == 1 }
+        if let again = windows(.setup).first {
+            await inRunLoop { again.performClose(nil) }
+            _ = await waitFor("setup window closed by its close button") { windows(.setup).isEmpty }
+            await click("Finish setup", in: home)
+            _ = await waitFor("setup window reopened by Finish setup after closing it") { windows(.setup).count == 1 }
+        }
+        // Clicking it while the window is already open (behind Home) must raise that one window, not add another.
+        if let open = windows(.setup).first {
+            await inRunLoop { home.orderFront(nil) }
+            let behind = { NSApp.orderedWindows.firstIndex(of: open) ?? 99 } 
+            let homeIndex = { NSApp.orderedWindows.firstIndex(of: home) ?? 99 }
+            expect(homeIndex() < behind(), "test setup: Home should be in front of the setup window")
+            await click("Finish setup", in: home)
+            _ = await waitFor("Finish setup raising the already-open setup window") { behind() < homeIndex() }
+            expect(windows(.setup).count == 1, "Finish setup with the window open should leave one setup window, got \(windows(.setup).count)")
+        }
     }
 
     private func homeCreateCloses() async {
@@ -429,3 +459,4 @@ extension SelfTestRunner {
         return w
     }
 }
+

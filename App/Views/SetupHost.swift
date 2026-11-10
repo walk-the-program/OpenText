@@ -10,7 +10,10 @@ struct SetupHost: View {
 
     var body: some View {
         SetupView(state: $state, actions: SetupActions(
-            onMakeDefault: { Task { _ = await OpenTextSetup.makeDefault(); refresh() } },
+            onMakeDefault: { Task {
+                state.defaultAppsNote = OpenTextSetup.failureNote(await OpenTextSetup.makeDefault())
+                refresh()
+            } },
             onOpenFinderSettings: { OpenTextSetup.openExtensionSettings() },
             onShortcutChanged: { new in model.update { $0.hotkey = new }; refresh() },
             onDone: { dismissWindow(id: "setup") }),

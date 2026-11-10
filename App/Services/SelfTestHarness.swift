@@ -50,6 +50,9 @@ struct AXHit: Sendable {
 }
 
 enum AXReader {
+    nonisolated(unsafe) static var diag = ""
+    /// True when the last read found no windows at all (windows not on the active Space).
+    nonisolated(unsafe) static var sawNoWindows = false
     /// Reads the whole tree. Must run on the main thread: for our own process the call evaluates SwiftUI view
     /// bodies on the calling thread, and those are main-actor isolated.
     @MainActor
@@ -68,11 +71,18 @@ enum AXReader {
                 return NSRect(x: pt.x, y: primaryHeight - pt.y - sz.height, width: sz.width, height: sz.height)
             }
             var out: [AXHit] = []
+            var diagLines: [String] = []
             func walk(_ e: AXUIElement, window: NSRect, inSheet: Bool, depth: Int) {
                 guard depth < 40, out.count < 2000 else { return }
                 let role = str(e, "AXRole")
                 var win = window, sheet = inSheet
-                if role == "AXWindow", let f = frame(e) { win = f }
+                if role == "AXWindow" {
+                    var pv: CFTypeRef?, sv: CFTypeRef?
+                    let pe = AXUIElementCopyAttributeValue(e, "AXPosition" as CFString, &pv)
+                    let se = AXUIElementCopyAttributeValue(e, "AXSize" as CFString, &sv)
+                    diagLines.append("win '\(str(e, "AXTitle"))' pos=\(pe.rawValue) size=\(se.rawValue)")
+                    if let f = frame(e) { win = f }
+                }
                 if role == "AXSheet" { sheet = true }
                 if role != "AXApplication", role != "AXWindow", let f = frame(e) {
                     var label = str(e, "AXTitle")
@@ -84,7 +94,13 @@ enum AXReader {
                 }
                 for c in (attr(e, "AXChildren") as? [AXUIElement]) ?? [] { walk(c, window: win, inSheet: sheet, depth: depth + 1) }
             }
-            walk(AXUIElementCreateApplication(pid), window: .zero, inSheet: false, depth: 0)
+            let app = AXUIElementCreateApplication(pid)
+            let kids = (attr(app, "AXChildren") as? [AXUIElement]) ?? []
+            let wins = (attr(app, "AXWindows") as? [AXUIElement]) ?? []
+            diagLines.append("app children \(kids.map { str($0, "AXRole") }) windows \(wins.count)")
+            walk(app, window: .zero, inSheet: false, depth: 0)
+            AXReader.diag = diagLines.joined(separator: "; ")
+            AXReader.sawNoWindows = wins.isEmpty
             return out
         }()
     }
@@ -99,7 +115,9 @@ extension SelfTestRunner {
         let primary = NSScreen.screens.first?.frame.height ?? 0
         let wf = window.frame
         return await AXReader.snapshot(primaryHeight: primary).filter { hit in
-            abs(hit.window.minX - wf.minX) < 2 && abs(hit.window.maxY - wf.maxY) < 2 && abs(hit.window.width - wf.width) < 2
+            // Occasionally the system cannot report an AXWindow's own frame; then fall back to where the element is.
+            if hit.window == .zero { return wf.insetBy(dx: -2, dy: -2).contains(hit.frame) }
+            return abs(hit.window.minX - wf.minX) < 2 && abs(hit.window.maxY - wf.maxY) < 2 && abs(hit.window.width - wf.width) < 2
         }
     }
 
@@ -163,7 +181,9 @@ extension SelfTestRunner {
         let hits = all.filter { $0.label == label && (role == nil || $0.role == role!.rawValue) && $0.frame.width > 0 }
             .sorted { $0.inSheet && !$1.inSheet }
         guard hits.indices.contains(nth) else {
-            failures.append("click '\(label)': not found in \(w.identifier?.rawValue ?? w.title); buttons: "
+            let everything = await AXReader.snapshot(primaryHeight: NSScreen.screens.first?.frame.height ?? 0)
+            failures.append("click '\(label)': not found in \(w.identifier?.rawValue ?? w.title) frame \(NSStringFromRect(w.frame)); "
+                            + "tree has \(everything.count) elements in windows \(Set(everything.map { NSStringFromRect($0.window) })); AX windows: \(AXReader.diag); buttons: "
                             + all.filter { $0.role == "AXButton" }.map(\.label).joined(separator: ", "))
             return false
         }

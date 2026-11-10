@@ -9,12 +9,16 @@ public struct SetupState: Equatable, Sendable {
     public var shortcut: String
     /// Shown under the shortcut, e.g. a clash with another app. nil when fine.
     public var shortcutWarning: String?
+    /// Shown under the "make default" tile, e.g. the file types macOS refused. nil when fine.
+    public var defaultAppsNote: String?
 
-    public init(defaultAppsDone: Bool = false, finderExtensionOn: Bool = false, shortcut: String = "ctrl+opt+n", shortcutWarning: String? = nil) {
+    public init(defaultAppsDone: Bool = false, finderExtensionOn: Bool = false, shortcut: String = "ctrl+opt+n", shortcutWarning: String? = nil,
+                defaultAppsNote: String? = nil) {
         self.defaultAppsDone = defaultAppsDone
         self.finderExtensionOn = finderExtensionOn
         self.shortcut = shortcut
         self.shortcutWarning = shortcutWarning
+        self.defaultAppsNote = defaultAppsNote
     }
 }
 
@@ -59,7 +63,7 @@ public struct SetupView: View {
                 }
             }
             HStack(alignment: .top, spacing: Brand.Spacing.lg) {
-                tile(title: "Make OpenText your default", detail: "Opens images, PDF, .txt and .md. macOS asks you to confirm each type.", done: state.defaultAppsDone) {
+                tile(title: "Make OpenText your default", detail: "Opens images, PDF, .txt and .md. macOS asks you to confirm each type.", done: state.defaultAppsDone, note: state.defaultAppsNote) {
                     Button(state.defaultAppsDone ? "Set again" : "Make default", action: actions.onMakeDefault).buttonStyle(.secondaryAction)
                 }
                 tile(title: "Turn on Finder right-click", detail: "New Text File, New Markdown File and Convert to… in Finder. Switch it on in System Settings.", done: state.finderExtensionOn) {

@@ -33,10 +33,25 @@ front() {
 }
 
 typeset -a rows
+last_res=PASS last_note= last_out= last_row=
 failed=0
 
 # run <scenario> <settings-json-or-"keep"> [with-file|with-dir]
+# A click scenario that finds no windows in the system accessibility tree (OpenText's windows are not on the active
+# Space, e.g. while a full-screen app is in front) is an environment problem, not a result: it is tried again.
 run() {
+  local attempt
+  for attempt in 1 2 3; do
+    run_once "$@"
+    [[ $last_note == *AX-UNAVAILABLE* ]] || break
+    sleep 5
+  done
+  [[ -n $last_row ]] && rows+=("$last_row")
+  [[ $last_res == PASS ]] || { echo "---- $1 result:"; cat "$last_out" 2>/dev/null; }
+}
+
+run_once() {
+  last_res=PASS last_note= last_row=
   local name=$1 settingsmode=$2 mode=${3:-}
   [[ -n ${ONLY:-} && ",$ONLY," != *",$name,"* ]] && return
   local d=$work/$name; mkdir -p "$d"
@@ -74,8 +89,7 @@ run() {
   fi
   [[ $before == "$after" && $after != OpenText ]] || { res=FAIL; note="$note frontmost changed ($before -> $after)"; }
   [[ $res == PASS ]] || failed=1
-  rows+=("$res|$name|$before|$after|${note# }")
-  [[ $res == PASS ]] || { echo "---- $name result:"; cat "$out" 2>/dev/null; }
+  last_res=$res last_note=$note last_out=$out last_row="$res|$name|$before|$after|${note# }"
 }
 
 plain='{"setupShown": true}'

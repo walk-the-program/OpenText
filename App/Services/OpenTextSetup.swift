@@ -14,6 +14,7 @@ enum OpenTextSetup {
 
     /// macOS shows its own confirmation per type. Returns the types that failed.
     static func makeDefault() async -> [UTType] {
+        if SelfTest.enabled { SelfTest.stub("makeDefault"); return [] }      // the self-test never changes default apps
         var failed: [UTType] = []
         for type in defaultTypes {
             do { try await NSWorkspace.shared.setDefaultApplication(at: Bundle.main.bundleURL, toOpen: type) }
@@ -29,6 +30,7 @@ enum OpenTextSetup {
     static var allDefaults: Bool { defaultTypes.allSatisfy(isDefault) }
 
     static func openExtensionSettings() {
+        if SelfTest.enabled { SelfTest.stub("finderExtension"); return }      // the self-test never opens System Settings
         for s in ["x-apple.systempreferences:com.apple.ExtensionsPreferences",
                   "x-apple.systempreferences:"] {
             if let u = URL(string: s), NSWorkspace.shared.open(u) { return }

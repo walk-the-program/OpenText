@@ -11,6 +11,9 @@ enum SelfTest {
     static let script = arg("--selftest-script")
     static let file = arg("--selftest-file")
     static let dir = arg("--selftest-dir")
+    /// System-touching calls (default apps, Finder extension settings) are recorded here instead of made.
+    nonisolated(unsafe) static var stubCalls: [String] = []
+    static func stub(_ name: String) { stubCalls.append(name) }
 
     static func arg(_ name: String) -> String? {
         let a = CommandLine.arguments
@@ -22,6 +25,7 @@ enum SelfTest {
     @MainActor static func prepare() {
         guard enabled else { return }
         NSApplication.shared.setActivationPolicy(.accessory)
+        SelfTestExceptions.install()
         let nc = NotificationCenter.default
         for name in [NSWindow.didBecomeMainNotification, NSWindow.didBecomeKeyNotification] {
             nc.addObserver(forName: name, object: nil, queue: .main) { n in
@@ -74,9 +78,9 @@ final class SelfTestRunner {
 
     let scenario: String
     let out: String
-    private var steps: [[String: Any]] = []
-    private var failures: [String] = []
-    private var model: AppModel { AppModel.shared }
+    var steps: [[String: Any]] = []
+    var failures: [String] = []
+    var model: AppModel { AppModel.shared }
 
     init(scenario: String, out: String) { self.scenario = scenario; self.out = out }
 
@@ -135,13 +139,15 @@ final class SelfTestRunner {
     }
 
     func watchdog() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [self] in
-            MainActor.assumeIsolated { failures.append("scenario watchdog (20 s)"); snapshot("watchdog"); finish() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 40) { [self] in
+            MainActor.assumeIsolated { failures.append("scenario watchdog (40 s)"); snapshot("watchdog"); finish() }
         }
     }
 
     func finish() -> Never {
-        let result: [String: Any] = ["scenario": scenario, "steps": steps, "pass": failures.isEmpty, "failures": failures]
+        failures += SelfTestExceptions.recorded.map { "exception: \($0)" }
+        let result: [String: Any] = ["scenario": scenario, "steps": steps, "pass": failures.isEmpty, "failures": failures,
+                                     "stubCalls": SelfTest.stubCalls]
         if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]) {
             try? data.write(to: URL(fileURLWithPath: out), options: .atomic)
         }
@@ -162,6 +168,7 @@ final class SelfTestRunner {
         case "open-rtfd": await openRTFD()
         case "first-run-setup": await setupScenario(expectSetup: true)
         case "second-run-no-setup": await setupScenario(expectSetup: false)
+        case _ where Self.clickScenarios.contains(scenario): await runClickScenario(scenario)
         default: failures.append("unknown scenario \(scenario)")
         }
         finish()

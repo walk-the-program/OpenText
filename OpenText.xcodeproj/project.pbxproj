@@ -11,11 +11,13 @@
 		03E1B05627BD1BB1CE7574F8 /* DocumentSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 168A07F37EB2F8394AB3D418 /* DocumentSession.swift */; };
 		07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 682424D182245CB368B99D3F /* Sheets.swift */; };
 		096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3178FDCDE7F6B4F1472D735F /* SetupHost.swift */; };
+		0B67038E9D41964AFF0D5535 /* SelfTestHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641121E37C112A8A3FEFA3B0 /* SelfTestHarness.swift */; };
 		135C1323E283BC9DDF10753D /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */; };
 		3099FE7145AD21B220E65049 /* HomeHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3316720B79CBB351763D7E /* HomeHost.swift */; };
 		3A8AB9D05A976F134E31F05D /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A15719015A5A1FF645C2938B /* AppDelegate.swift */; };
 		3FB992C199B8ACF26E04A845 /* OpenTextFinder.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = FD1EC90CD53B2281DF3D524B /* OpenTextFinder.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4267D8408A54025A85FA7B06 /* DocumentWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913786DD947C498DC6D50E52 /* DocumentWindowView.swift */; };
+		4924D8A88C1AF66D2FA85453 /* SelfTestScenarios.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832412EB88B477D5AE67A707 /* SelfTestScenarios.swift */; };
 		4979E9270177E6B88449BAFF /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 87C56FE4E37C37DAB2357F3F /* Assets.xcassets */; };
 		57B37931BE21982D5301DF0E /* OpenTextAppLogic in Frameworks */ = {isa = PBXBuildFile; productRef = 4586EB6B148DF8C6E9AD499B /* OpenTextAppLogic */; };
 		5904E577106D2C926180BC3F /* OpenTextDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 72848C069E46A3614FAA26C0 /* OpenTextDesign */; };
@@ -72,9 +74,11 @@
 		57953B9B9E13D439B5175573 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5AC2EA3EB2F5A4436A942C25 /* RecoveryPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryPin.swift; sourceTree = "<group>"; };
 		61100E36E4BF55D108E6BDD4 /* BiometricKeychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricKeychain.swift; sourceTree = "<group>"; };
+		641121E37C112A8A3FEFA3B0 /* SelfTestHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfTestHarness.swift; sourceTree = "<group>"; };
 		682424D182245CB368B99D3F /* Sheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sheets.swift; sourceTree = "<group>"; };
 		694B0C728DC3C5F0B006918B /* HotkeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HotkeyManager.swift; sourceTree = "<group>"; };
 		8263EFA2D68536A6C153A1CD /* Logic */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Logic; path = App/Logic; sourceTree = SOURCE_ROOT; };
+		832412EB88B477D5AE67A707 /* SelfTestScenarios.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfTestScenarios.swift; sourceTree = "<group>"; };
 		8454A5816D4B0E31BE473153 /* OpenText.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = OpenText.entitlements; sourceTree = "<group>"; };
 		87C56FE4E37C37DAB2357F3F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		87CF823A9CFFD83E88C6BE5D /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
@@ -130,6 +134,8 @@
 				CA7FD66B420B79137FE17F10 /* OpenTextSetup.swift */,
 				5AC2EA3EB2F5A4436A942C25 /* RecoveryPin.swift */,
 				4005555DE4FC0C94AC3B67E5 /* SelfTest.swift */,
+				641121E37C112A8A3FEFA3B0 /* SelfTestHarness.swift */,
+				832412EB88B477D5AE67A707 /* SelfTestScenarios.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -329,6 +335,8 @@
 				D4A3971E6A782BCFA66D2E61 /* QuickCreateHost.swift in Sources */,
 				A137568051447622F3D730E4 /* RecoveryPin.swift in Sources */,
 				D4790E024289209CE1E6FA63 /* SelfTest.swift in Sources */,
+				0B67038E9D41964AFF0D5535 /* SelfTestHarness.swift in Sources */,
+				4924D8A88C1AF66D2FA85453 /* SelfTestScenarios.swift in Sources */,
 				096C89177678D2DC1FBA2011 /* SetupHost.swift in Sources */,
 				07C541CFA1575257D2C976C0 /* Sheets.swift in Sources */,
 			);

@@ -73,6 +73,8 @@ final class DocumentSession: ObservableObject {
     private var imageSourceData: Data?
     private var loadToken = UUID()
     private var isSaving = false
+    /// How many writes completed, for self-tests.
+    private(set) var saveCountForTesting = 0
     /// Bumped on every text edit so a finished save knows whether newer edits arrived meanwhile.
     private var revision = 0
     nonisolated private static let maxEditableText = 20_000_000
@@ -326,6 +328,7 @@ final class DocumentSession: ObservableObject {
             guard let data = try await buildData(interactive: interactive) else { return false }
             let dest = url
             try await Task.detached { try SafeWrite.write(data, to: dest) }.value
+            saveCountForTesting += 1
             if case .text = content, revision != startRevision {      // typed during the write: still dirty
                 recordedMTime = Self.mtime(url)
                 scheduleAutosave()

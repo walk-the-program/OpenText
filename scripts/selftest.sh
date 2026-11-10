@@ -21,9 +21,11 @@ trap cleanup EXIT
 
 cd "$repo"
 xcodegen generate --quiet >/dev/null 2>&1 || /opt/homebrew/bin/xcodegen generate --quiet >/dev/null
+if [[ -n ${SKIP_BUILD:-} && -d $app ]]; then :; else
 xcodebuild -project OpenText.xcodeproj -scheme OpenText -configuration Debug -destination 'platform=macOS' \
   -derivedDataPath "$dd" CODE_SIGNING_ALLOWED=NO build -quiet >"$work/build.log" 2>&1 || {
-  echo "BUILD FAILED"; tail -30 "$work/build.log"; exit 2; }
+  echo "BUILD FAILED"; grep -E "error:" "$work/build.log" | cut -c1-300 | sort -u | head -20; exit 2; }
+fi
 
 front() {
   osascript -e 'tell application "System Events" to get name of first process whose frontmost is true' 2>/dev/null \
@@ -36,9 +38,10 @@ failed=0
 # run <scenario> <settings-json-or-"keep"> [with-file|with-dir]
 run() {
   local name=$1 settingsmode=$2 mode=${3:-}
+  [[ -n ${ONLY:-} && ",$ONLY," != *",$name,"* ]] && return
   local d=$work/$name; mkdir -p "$d"
   local settings=$d/settings.json; [[ -n ${4:-} ]] && settings=$work/settings-$4.json
-  [[ $settingsmode == keep ]] || print -r -- "$settingsmode" >"$settings"
+  [[ $settingsmode == keep ]] || print -r -- "${settingsmode//@DIR@/$d/files}" >"$settings"
   local out=$d/result.json; rm -f "$out" "$out.ready"
   local extra=() fileargs=()
   if [[ $mode == with-file ]]; then
@@ -86,6 +89,11 @@ run open-html           "$plain" with-dir
 run open-rtfd           "$plain" with-dir
 run first-run-setup     '{}' "" firstrun
 run second-run-no-setup keep "" firstrun
+dirset='{"setupShown": true, "defaultFolder": "@DIR@", "lastNewFileFormat": "txt"}'
+for s in home-open-panel home-controls home-finish-setup setup-buttons home-create-closes doc-save doc-rename doc-resize \
+         lock-cancel convert-cancel convert-run quick-create doc-toolbar; do
+  run $s "$dirset" with-dir
+done
 
 echo
 printf '%-5s %-22s %-18s %-18s %s\n' RESULT SCENARIO FRONT-BEFORE FRONT-AFTER NOTES

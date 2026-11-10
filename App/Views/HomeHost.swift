@@ -31,7 +31,7 @@ struct HomeHost: View {
     private func refreshRecents() {
         recents = NSDocumentController.shared.recentDocumentURLs
             .filter { FileManager.default.fileExists(atPath: $0.path) }
-        setupIncomplete = !OpenTextSetup.allDefaults || !OpenTextSetup.finderExtensionEnabled
+        setupIncomplete = SelfTest.enabled || !OpenTextSetup.allDefaults || !OpenTextSetup.finderExtensionEnabled
     }
 
     private func create() {

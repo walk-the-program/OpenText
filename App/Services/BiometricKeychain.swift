@@ -22,10 +22,12 @@ enum BiometricKeychain {
         }
     }
 
-    static var isAvailable: Bool {
+    /// Asked once per launch, on first use. SwiftUI reads this on every body evaluation; a fresh LAContext each
+    /// time created one every ~12 ms while a sheet was up.
+    static let isAvailable: Bool = {
         var err: NSError?
         return LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &err)
-    }
+    }()
 
     private static func baseQuery(account: String) -> [String: Any] {
         [kSecClass as String: kSecClassGenericPassword,

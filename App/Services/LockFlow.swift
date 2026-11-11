@@ -15,13 +15,14 @@ enum LockFlow {
     }
     enum FlowError: LocalizedError {
         case password(PasswordRules.Problem)
-        case noSavedPassword, badRecoveryKey, recoveryChanged
+        case noSavedPassword, badRecoveryKey, recoveryChanged, selfTestStop
         var errorDescription: String? {
             switch self {
             case .password(.tooShort): return "Use at least \(PasswordRules.minimumLength) characters."
             case .password(.mismatch): return "The two passwords don't match."
             case .noSavedPassword: return "Touch ID has no saved password for this file. Enter the password."
             case .badRecoveryKey: return "That recovery key isn't valid."
+            case .selfTestStop: return "Self-test: lock stopped before the Keychain."
             case .recoveryChanged: return "Your recovery key changed outside OpenText."
             }
         }
@@ -67,6 +68,8 @@ enum LockFlow {
     /// The plaintext original is verified, then moved to the Trash.
     static func lock(_ file: URL, password: String, confirm: String, model: AppModel) async throws -> LockOutcome {
         if let problem = PasswordRules.validate(password: password, confirm: confirm) { throw FlowError.password(problem) }
+        // The self-test never reaches the Keychain or writes a locked file.
+        if SelfTest.enabled { SelfTest.stub("lock"); throw FlowError.selfTestStop }
         if case .mismatch = try checkRecovery(model: model) { throw FlowError.recoveryChanged }
         var pubKey = model.settings.recoveryPublicKey
         var outcome = LockOutcome()

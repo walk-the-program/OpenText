@@ -293,11 +293,17 @@ extension SelfTestRunner {
             failures.append("text field '\(label)' not found; fields: " + hits.filter { $0.role == "AXTextField" }.map(\.summary).joined(separator: "; "))
             return
         }
-        await clickScreenPoint(NSPoint(x: hit.frame.midX, y: hit.frame.midY), in: w)
+        // Through AppKit's queue: a password field tracks the click in a loop that waits for the mouse-up there.
+        let p = w.convertPoint(fromScreen: NSPoint(x: hit.frame.midX, y: hit.frame.midY))
+        await post([mouseEvent(.leftMouseDown, at: p, in: w), mouseEvent(.leftMouseUp, at: p, in: w)].compactMap { $0 })
         // Typing before the field editor has focus loses the keystrokes: wait for it, then check what arrived.
         _ = await waitFor("text field '\(label)' to take focus") { (w.firstResponder as? NSTextView)?.delegate is NSTextField }
         await replaceText(with: text, in: w)
-        _ = await waitUntil("text field to show '\(text)'") { await axElements(in: w).contains { $0.role == "AXTextField" && $0.value == text } }
+        // A password field only shows bullets: then the count must match.
+        _ = await waitUntil("text field to show '\(text)'") {
+            await axElements(in: w).contains { $0.role == "AXTextField"
+                && ($0.value == text || ($0.value.count == text.count && $0.value.allSatisfy { $0 == "•" })) }
+        }
     }
 }
 

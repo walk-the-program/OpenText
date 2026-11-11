@@ -5,7 +5,7 @@ import OpenTextDesign
 public struct TextEditorActions {
     public var onConvert: () -> Void
     public var onLock: () -> Void
-    /// .txt only: flip between Inter and SF Mono (D-016). The app stores the choice and passes `monospace` back.
+    /// .txt only: flip between Inter and Geist Mono (D-016). The app stores the choice and passes `monospace` back.
     public var onToggleMonospace: () -> Void
 
     public init(onConvert: @escaping () -> Void = {}, onLock: @escaping () -> Void = {}, onToggleMonospace: @escaping () -> Void = {}) {
@@ -91,7 +91,13 @@ public struct TextEditorView: View {
                     ToolButton(title: "List", shortcut: key(.init("l", modifiers: [.command, .shift]))) { controller.perform(.list) }.disabled(mode == .preview)
                     ToolButton(title: "Link", shortcut: key(.init("k", modifiers: .command))) { controller.perform(.link) }.disabled(mode == .preview)
                 } else {
-                    ToolButton(title: monospace ? "Inter" : "Mono", shortcut: .init("m", modifiers: [.command, .shift])) { actions.onToggleMonospace() }
+                    // Shows the font in use; picking the other one switches (⇧⌘M toggles).
+                    BrandSegmentedControl(["Inter", "Mono"], selection: Binding(
+                        get: { monospace ? "Mono" : "Inter" },
+                        set: { if ($0 == "Mono") != monospace { actions.onToggleMonospace() } }),
+                        title: { $0 }, accessibilityTitle: { "\($0) font" })
+                    .background(Button("") { actions.onToggleMonospace() }
+                        .keyboardShortcut("m", modifiers: [.command, .shift]).opacity(0).allowsHitTesting(false))
                 }
             } trailing: {
                 if isMarkdown {
@@ -268,16 +274,21 @@ struct PlainTextView: NSViewRepresentable {
 
 /// Paints text storage attributes. Characters are never changed; only fonts and colours.
 enum PlainTextStyler {
-    static let size: CGFloat = 15
+    /// Roomy reading text: 16pt Inter with ~1.7 line height and a little air after each paragraph.
+    static let size: CGFloat = 16
 
     static func baseFont(monospace: Bool) -> NSFont {
-        monospace ? Brand.Fonts.nsMono(14) : Brand.Fonts.nsBody(size)
+        monospace ? Brand.Fonts.nsMono(15) : Brand.Fonts.nsBody(size)
     }
 
     static func baseAttributes(monospace: Bool) -> [NSAttributedString.Key: Any] {
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = monospace ? 5 : 8
-        return [.font: baseFont(monospace: monospace), .foregroundColor: Brand.NSPalette.ink, .paragraphStyle: style]
+        style.lineSpacing = monospace ? 8 : 11
+        style.paragraphSpacing = monospace ? 4 : 10
+        var attrs: [NSAttributedString.Key: Any] = [.font: baseFont(monospace: monospace), .foregroundColor: Brand.NSPalette.ink,
+                                                    .paragraphStyle: style]
+        if !monospace { attrs[.kern] = 0.15 }
+        return attrs
     }
 
     /// Full restyle (load, md/txt or monospace switch).

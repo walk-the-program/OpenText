@@ -14,6 +14,11 @@ enum SelfTest {
     static let dir = arg("--selftest-dir")
     /// System-touching calls (default apps, Finder extension settings) are recorded here instead of made.
     nonisolated(unsafe) static var stubCalls: [String] = []
+    /// Home's recent files in self-test mode (the real list is never read or written).
+    nonisolated(unsafe) static var recents: [URL] = []
+    static let refreshHome = Notification.Name("OpenTextSelfTestRefreshHome")
+    /// What the single-file picker "chooses" in self-test mode (no panel is shown).
+    nonisolated(unsafe) static var pickFileURL: URL?
     static func stub(_ name: String) { stubCalls.append(name) }
     /// What the stubbed makeDefault reports as refused; scenarios change it to test the failure note.
     nonisolated(unsafe) static var makeDefaultFailures: [UTType] = []

@@ -234,10 +234,22 @@ enum Fixture {
         let recents = ["/Users/me/Documents/Lease 2026.pdf", "/Users/me/Desktop/Notes.md", "/Users/me/Downloads/Receipt.png", "/Users/me/Projects/OpenText/README.txt"].map { URL(fileURLWithPath: $0) }
         for dark in [false, true] {
             var qc = QuickCreateState()
-            let size = CGSize(width: 800, height: 520)
+            let size = HomeView.size
             let rep = Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 }), recents: recents, setupIncomplete: true), name: "home", dark: dark, size: size)
             #expect(Snap.inkFraction(rep) > 0.02)
             Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 })), name: "home-empty", dark: dark, size: size)
+            var cv = HomeConvertState()
+            cv.file = URL(fileURLWithPath: "/Users/w/Documents/Lease 2026.pdf")
+            cv.targets = ["png", "txt", "md", "docx"]
+            cv.target = "txt"
+            cv.status = HomeStatus(message: "Made Lease 2026.txt next to the original.", reveal: cv.file)
+            var lk = HomeLockState()
+            lk.file = URL(fileURLWithPath: "/Users/w/Desktop/Taxes 2025.pdf")
+            lk.password = "secret-one"
+            lk.confirm = "secret-two"
+            lk.status = HomeStatus(message: "The two passwords don't match.", isError: true)
+            Snap.render(HomeView(quickCreate: Binding(get: { qc }, set: { qc = $0 }), convert: .constant(cv), lock: .constant(lk)),
+                        name: "home-filled", dark: dark, size: size)
         }
     }
 

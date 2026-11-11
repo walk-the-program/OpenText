@@ -10,7 +10,7 @@ extension SelfTestRunner {
     static let clickScenarios: Set<String> = [
         "home-open-panel", "home-controls", "home-finish-setup", "setup-buttons", "home-create-closes", "doc-save",
         "doc-rename", "doc-resize", "lock-cancel", "convert-cancel", "convert-run", "quick-create", "doc-toolbar",
-        "doc-close-prompt", "pdf-sign-move", "pdf-text-box",
+        "doc-close-prompt", "pdf-sign-move", "pdf-text-box", "home-recent-closes", "home-convert", "home-lock-check",
     ]
 
     func runClickScenario(_ name: String) async {
@@ -31,6 +31,9 @@ extension SelfTestRunner {
         case "doc-close-prompt": await docClosePrompt()
         case "pdf-sign-move": await pdfSignMove()
         case "pdf-text-box": await pdfTextBox()
+        case "home-recent-closes": await homeRecentCloses()
+        case "home-convert": await homeConvert()
+        case "home-lock-check": await homeLockCheck()
         default: failures.append("unknown click scenario \(name)")
         }
     }
@@ -469,8 +472,11 @@ extension SelfTestRunner {
         guard await waitFor("Plain.txt window", { doc(named: "Plain.txt") != nil }), let p = doc(named: "Plain.txt") else { return }
         await docReady(p, "Plain.txt")
         let mono = model.settings.txtMonospace
-        await click(mono ? "Inter" : "Mono", in: p)
+        // The font control shows the font in use; clicking the other one switches.
+        _ = await waitUntil("font control showing the current font") { await axFind(in: p, label: mono ? "Mono font" : "Inter font")?.selected == true }
+        await click(mono ? "Inter font" : "Mono font", in: p)
         _ = await waitFor("monospace setting flipping") { model.settings.txtMonospace != mono }
+        _ = await waitUntil("font control showing the new font") { await axFind(in: p, label: mono ? "Inter font" : "Mono font")?.selected == true }
     }
 }
 
@@ -508,6 +514,62 @@ extension SelfTestRunner {
         guard let w = await createViaHome(home, name: "Close", expectFile: "Close.txt") else { return nil }
         await docReady(w, "Close.txt")
         return w
+    }
+
+    // MARK: Home cards
+
+    private func fixture(_ name: String, _ text: String = "hello") -> URL? {
+        guard let dir = dirURL else { return nil }
+        let url = dir.appendingPathComponent(name)
+        try? text.write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    /// Clicking a recent file opens it and closes Home, like Create does.
+    private func homeRecentCloses() async {
+        guard let url = fixture("Recent.txt") else { return }
+        SelfTest.recents = [url]
+        NotificationCenter.default.post(name: SelfTest.refreshHome, object: nil)
+        guard let home = await homeReady() else { return }
+        _ = await waitUntil("recent row") { await axFind(in: home, label: "Open Recent.txt") != nil }
+        await click("Open Recent.txt", in: home)
+        _ = await waitFor("Recent.txt window") { doc(named: "Recent.txt") != nil }
+        _ = await waitFor("Home closing after opening a recent file") { windows(.home).isEmpty }
+    }
+
+    /// Convert card: pick a file, pick a format, Convert; the new file appears next to the original, Home stays.
+    private func homeConvert() async {
+        guard let dir = dirURL, let url = fixture("Conv.txt") else { return }
+        SelfTest.pickFileURL = url
+        guard let home = await homeReady() else { return }
+        await click("Choose a file…", in: home, nth: 0)
+        _ = await waitUntil("convert targets") { await axFind(in: home, label: "Convert to pdf") != nil }
+        await click("Convert to pdf", in: home)
+        _ = await waitUntil("pdf target selected") { await axFind(in: home, label: "Convert to pdf")?.selected == true }
+        await click("Convert", in: home)
+        _ = await waitFor("Conv.pdf next to the original", timeout: 10) {
+            FileManager.default.fileExists(atPath: dir.appendingPathComponent("Conv.pdf").path)
+        }
+        expect(FileManager.default.fileExists(atPath: url.path), "converting must keep the original")
+        expect(!windows(.home).isEmpty, "Home should stay open after converting")
+    }
+
+    /// Lock card: pick a file, type two different passwords, Lock: an inline error, nothing locked or moved.
+    /// (A real lock writes the recovery key to the Keychain, which the self-test never touches.)
+    private func homeLockCheck() async {
+        guard let dir = dirURL, let url = fixture("LockMe.txt") else { return }
+        SelfTest.pickFileURL = url
+        guard let home = await homeReady() else { return }
+        await click("Choose a file…", in: home, nth: 1)
+        _ = await waitUntil("password fields") { await axFind(in: home, label: "Type it again") != nil }
+        await typeIntoField(label: "Password", text: "correct horse 1", in: home)
+        await typeIntoField(label: "Type it again", text: "different 2", in: home)
+        await click("Lock", in: home)
+        _ = await waitUntil("mismatch message") { await axHasText(in: home, containing: "don't match") }
+        expect(!SelfTest.stubCalls.contains("lock"), "mismatched passwords must stop before locking")
+        expect(FileManager.default.fileExists(atPath: url.path), "the original must stay when the passwords differ")
+        expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent("LockMe.txt.otlock").path)
+               && !FileManager.default.fileExists(atPath: dir.appendingPathComponent("LockMe.otlock").path), "nothing may be locked")
     }
 
     // MARK: PDF editing

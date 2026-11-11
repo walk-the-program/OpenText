@@ -210,15 +210,52 @@ final class AppModel: ObservableObject {
         }
     }
 
-    func openPanel() {
+    /// `onOpened` runs after the chosen files were handed to their windows (Home closes itself then).
+    func openPanel(onOpened: (() -> Void)? = nil) {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
         panel.begin { [weak self] r in
             guard r == .OK else { return }
-            Task { @MainActor in panel.urls.forEach { self?.openFile($0) } }
+            Task { @MainActor in
+                guard let self else { return }
+                let opened = panel.urls.filter { FileRouting.kind(for: $0) != .unsupported }
+                panel.urls.forEach { self.openFile($0) }
+                if !opened.isEmpty { onOpened?() }
+            }
         }
+    }
+
+    /// Single-file picker for Home's Convert and Lock cards.
+    func pickFile(prompt: String, completion: @escaping (URL) -> Void) {
+        if SelfTest.enabled {
+            SelfTest.stub("pickFile")
+            if let url = SelfTest.pickFileURL { completion(url) }
+            return
+        }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = prompt
+        panel.begin { r in
+            guard r == .OK, let url = panel.url else { return }
+            Task { @MainActor in completion(url) }
+        }
+    }
+
+    /// Formats `file` can be converted to (lowercase extensions), empty when none.
+    func convertTargets(for file: URL) -> [String] {
+        guard let f = DocFormat(url: file), f != .otlock else { return [] }
+        return engine.targets(from: f).map(\.fileExtension)
+    }
+
+    /// Converts next to the original off the main thread; returns the files written.
+    func convertNow(_ file: URL, to format: String) async throws -> [URL] {
+        guard let fmt = DocFormat(name: format) else { throw ToolError("Unknown format .\(format)") }
+        let engine = self.engine
+        return try await Task.detached { try engine.convert(file, to: fmt) }.value
     }
 
     /// Folder-only picker, shown only when the user clicks Change.

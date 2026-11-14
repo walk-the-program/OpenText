@@ -473,10 +473,10 @@ extension SelfTestRunner {
         await docReady(p, "Plain.txt")
         let mono = model.settings.txtMonospace
         // The font control shows the font in use; clicking the other one switches.
-        _ = await waitUntil("font control showing the current font") { await axFind(in: p, label: mono ? "Mono font" : "Inter font")?.selected == true }
-        await click(mono ? "Inter font" : "Mono font", in: p)
+        _ = await waitUntil("font control showing the current font") { await axFind(in: p, label: mono ? "Mono font" : "Geist font")?.selected == true }
+        await click(mono ? "Geist font" : "Mono font", in: p)
         _ = await waitFor("monospace setting flipping") { model.settings.txtMonospace != mono }
-        _ = await waitUntil("font control showing the new font") { await axFind(in: p, label: mono ? "Inter font" : "Mono font")?.selected == true }
+        _ = await waitUntil("font control showing the new font") { await axFind(in: p, label: mono ? "Geist font" : "Mono font")?.selected == true }
     }
 }
 

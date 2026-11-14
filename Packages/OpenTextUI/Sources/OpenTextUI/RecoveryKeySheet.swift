@@ -43,7 +43,7 @@ public struct RecoveryKeySheet: View {
                 Button("I've stored it", action: onDone).buttonStyle(.primaryAction).keyboardShortcut(.defaultAction)
             }
         }
-        .padding(Brand.Spacing.xl).frame(width: 480).background(Brand.Palette.canvas)
+        .padding(Brand.Spacing.xl).frame(width: 480).background(Brand.Palette.card)
     }
 
     private func copy() {

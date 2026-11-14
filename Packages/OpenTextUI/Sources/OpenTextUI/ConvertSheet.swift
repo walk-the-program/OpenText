@@ -26,14 +26,11 @@ public struct ConvertSheet: View {
                     let on = (selected ?? targets.first) == target
                     Button { withAnimation(Brand.Motion.settle) { selected = target } } label: {
                         HStack(spacing: Brand.Spacing.sm) {
-                            Image(systemName: "checkmark").font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(Brand.Palette.primaryText).opacity(on ? 1 : 0)
-                                .frame(width: 14)
-                            Text(Self.title(target)).font(Brand.Fonts.body(14, weight: .medium))
+                            Text(Self.title(target)).font(Brand.Fonts.body(14, weight: on ? .semibold : .medium))
+                                .foregroundStyle(BrandRowText.primary(on))
                             Spacer()
-                            Text(".\(target)").font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted)
+                            Text(".\(target)").font(Brand.Fonts.body(12.5)).foregroundStyle(BrandRowText.secondary(on))
                         }
-                        .foregroundStyle(Brand.Palette.ink)
                         .padding(.horizontal, 12).frame(height: Brand.Size.row)
                         .background(BrandRowBackground(selected: on))
                         .contentShape(Rectangle())
@@ -42,8 +39,7 @@ public struct ConvertSheet: View {
                     .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
-            .padding(6)
-            .cardSurface(radius: Brand.Radius.lg)
+            .padding(.vertical, 2)
             HStack {
                 Spacer()
                 Button("Cancel", action: onCancel).buttonStyle(.secondaryAction).keyboardShortcut(.cancelAction)
@@ -51,7 +47,7 @@ public struct ConvertSheet: View {
                     .buttonStyle(.primaryAction).keyboardShortcut(.defaultAction).disabled(targets.isEmpty)
             }
         }
-        .padding(Brand.Spacing.xl).frame(width: 400).background(Brand.Palette.canvas).brandEnter()
+        .padding(Brand.Spacing.xl).frame(width: 440).background(Brand.Palette.card).brandEnter()
     }
 
     static func title(_ ext: String) -> String {

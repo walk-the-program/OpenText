@@ -10,22 +10,26 @@ import Testing
         for name in Brand.Fonts.PostScript.all {
             let font = CTFontCreateWithName(name as CFString, 13, nil)
             #expect(CTFontCopyPostScriptName(font) as String == name, "\(name) should resolve to itself, not a fallback")
-            #expect(["Inter 18pt", "Plus Jakarta Sans", "Geist Mono"].contains(CTFontCopyFamilyName(font) as String))
+            #expect(["Geist", "Geist Mono"].contains(CTFontCopyFamilyName(font) as String))
         }
-        #expect(Brand.Fonts.nsBody(13, weight: .semibold).fontName == "Inter18pt-SemiBold")
-        #expect(Brand.Fonts.nsHeading().fontName == "PlusJakartaSans-Regular_SemiBold")
+        #expect(Brand.Fonts.nsBody(13, weight: .semibold).fontName == "Geist-SemiBold")
+        #expect(Brand.Fonts.nsHeading().fontName == "Geist-SemiBold")
         #expect(Brand.Fonts.nsMono().fontName == "GeistMono-Regular")
     }
 
-    @Test func headingIsJakartaSemiBoldAndDisplayIsLight() {
+    @Test func geistIsTheOnlyUIFamily() {
         _ = Brand.registerFonts()
-        #expect(NSFontManager.shared.availableFontFamilies.contains("Plus Jakarta Sans"))
-        #expect(!NSFontManager.shared.availableFontFamilies.contains("Inter Tight"))
-        let heading = CTFontCopyVariation(Brand.Fonts.nsHeading(20) as CTFont) as? [Int: Double]
-        #expect(heading?.values.contains(600) == true, "heading variation: \(String(describing: heading))")
-        let light = CTFontCreateWithName(Brand.Fonts.PostScript.displayLight as CFString, 30, nil)
-        let lv = CTFontCopyVariation(light) as? [Int: Double]
-        #expect(lv?.values.contains(300) == true, "display variation: \(String(describing: lv))")
+        let families = NSFontManager.shared.availableFontFamilies
+        #expect(families.contains("Geist"))
+        // Only Geist and Geist Mono ship in the bundle (Inter may be installed on the Mac itself, which is fine).
+        let bundled = (Bundle.module.urls(forResourcesWithExtension: "ttf", subdirectory: nil) ?? [])
+            + (Bundle.module.urls(forResourcesWithExtension: "woff2", subdirectory: nil) ?? [])
+        #expect(Set(bundled.map(\.lastPathComponent)) == ["Geist.woff2", "GeistMono-Regular.ttf"], "bundled: \(bundled.map(\.lastPathComponent))")
+        let regular = CTFontCopyVariation(Brand.Fonts.nsBody(14) as CTFont) as? [Int: Double]
+        let semibold = CTFontCopyVariation(Brand.Fonts.nsHeading(20) as CTFont) as? [Int: Double]
+        // Regular is the font's default instance, which reports no variation (or 400).
+        #expect(regular?.isEmpty != false || regular?.values.contains(400) == true, "regular: \(String(describing: regular))")
+        #expect(semibold?.values.contains(600) == true, "semibold: \(String(describing: semibold))")
     }
 
     @Test func paletteMatchesBrandJSON() throws {

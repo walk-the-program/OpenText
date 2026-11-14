@@ -87,8 +87,11 @@ public final class TextBoxAnnotation: PDFAnnotation {
         let style = NSMutableParagraphStyle()
         style.lineBreakMode = .byWordWrapping
         // Ink is fixed dark on paper: a PDF page is white in light and dark mode.
+        // No ligatures: a joined "ff" glyph from the variable font reads back as "!" when the PDF's text is
+        // copied or searched, so every letter is drawn as itself.
         return NSAttributedString(string: text, attributes: [
             .font: Brand.Fonts.nsBody(fontSize), .foregroundColor: NSColor(white: 0.11, alpha: 1), .paragraphStyle: style,
+            .ligature: 0,
         ])
     }
 

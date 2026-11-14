@@ -51,8 +51,7 @@ public struct HomeActions {
     public init() {}
 }
 
-/// The window shown on launch: four cards side by side. New file, Open (button, drop, recents), Convert a file,
-/// Lock a file.
+/// The window shown on launch, in three columns: New file above Lock, Open with recent files, Convert.
 public struct HomeView: View {
     @Binding var quickCreate: QuickCreateState
     @Binding var convert: HomeConvertState
@@ -62,7 +61,14 @@ public struct HomeView: View {
     let actions: HomeActions
     @State private var dropTargeted = false
 
-    public static let size = CGSize(width: 1260, height: 560)
+    public static let size = CGSize(width: 1240, height: 780)
+    private static let pad: CGFloat = 26
+    private static let gap: CGFloat = 14
+    /// Column widths 1 : 1.2 : 1.
+    private static var columns: (CGFloat, CGFloat, CGFloat) {
+        let unit = (size.width - pad * 2 - gap * 2) / 3.2
+        return (unit, unit * 1.2, unit)
+    }
 
     public init(quickCreate: Binding<QuickCreateState>, convert: Binding<HomeConvertState> = .constant(.init()),
                 lock: Binding<HomeLockState> = .constant(.init()), recents: [URL] = [], setupIncomplete: Bool = false,
@@ -76,41 +82,50 @@ public struct HomeView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.lg) {
+        VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: Brand.Spacing.md) {
-                BrandMark(size: 36)
-                VStack(alignment: .leading, spacing: 4) {
+                BrandMark(size: 34)
+                VStack(alignment: .leading, spacing: 2) {
                     Text("OpenText").brandHeading(Brand.Fonts.Scale.largeTitle)
-                    Text("Open, edit, convert or lock any document.").brandSecondary(14)
+                    Text("Open, edit, convert or lock any document.").brandSecondary(13.5)
                 }
                 Spacer()
                 if setupIncomplete {
                     Button("Finish setup", action: actions.onFinishSetup)
                         .buttonStyle(PressableStyle())
-                        .font(Brand.Fonts.body(13, weight: .semibold)).underline(true).foregroundStyle(Brand.Palette.primaryText)
+                        .font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.primary)
                         .frame(height: 28).contentShape(Rectangle())
                 }
             }
+            .padding(.top, 40)        // clear of the traffic lights
             .brandEnter()
-            HStack(alignment: .top, spacing: Brand.Spacing.lg) {
-                card("New file") {
-                    QuickCreateView(state: $quickCreate, onCreate: actions.onCreate, onChangeFolder: actions.onChangeFolder, embedded: true)
+            HStack(alignment: .top, spacing: Self.gap) {
+                VStack(spacing: Self.gap) {
+                    tile("New file", trailing: "⌃⌥N") {
+                        QuickCreateView(state: $quickCreate, onCreate: actions.onCreate, onChangeFolder: actions.onChangeFolder, embedded: true)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
+                    .brandEnter(delay: 0.04)
+                    tile("Lock", trailing: "AES-256") { lockCard }.brandEnter(delay: 0.16)
                 }
-                .brandEnter(delay: 0.04)
-                card("Open") { openCard }.brandEnter(delay: 0.08)
-                card("Convert") { convertCard }.brandEnter(delay: 0.12)
-                card("Lock") { lockCard }.brandEnter(delay: 0.16)
+                .frame(width: Self.columns.0)
+                tile("Open", trailing: "⌘O") { openCard }.frame(width: Self.columns.1).brandEnter(delay: 0.08)
+                tile("Convert") { convertCard }.frame(width: Self.columns.2).brandEnter(delay: 0.12)
             }
             .frame(maxHeight: .infinity)
         }
-        .padding(Brand.Spacing.xl)
+        .padding(.horizontal, Self.pad).padding(.bottom, Self.pad)
         .frame(width: Self.size.width, height: Self.size.height, alignment: .topLeading)
         .background(Brand.Palette.canvas)
     }
 
-    private func card<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: Brand.Spacing.md) {
-            Text(title).brandHeading(Brand.Fonts.Scale.title2)
+    private func tile<Content: View>(_ title: String, trailing: String? = nil, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).brandHeading(Brand.Fonts.Scale.title2)
+                Spacer()
+                if let trailing { Text(trailing).font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted) }
+            }
             content()
         }
         .padding(20)
@@ -122,16 +137,17 @@ public struct HomeView: View {
 
     private var openCard: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
-            Button("Open a file…", action: actions.onOpenPanel).buttonStyle(.secondaryAction)
-            DropZone(label: "Drop a file here", targeted: $dropTargeted, onDrop: actions.onDropURLs)
-                .padding(.bottom, Brand.Spacing.xs)
-            Text("Recent").brandLabel()
+            HStack(spacing: Brand.Spacing.sm) {
+                Button("Open a file…", action: actions.onOpenPanel).buttonStyle(.secondaryAction)
+                DropZone(label: "Drop a file", height: Brand.Size.button, targeted: $dropTargeted, onDrop: actions.onDropURLs)
+            }
+            Text("Recent").brandLabel().padding(.top, 10).padding(.leading, 2)
             if recents.isEmpty {
                 Text("Files you open show up here.").font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted)
-                    .padding(.top, 2)
+                    .padding(.leading, 2)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(recents.prefix(6).enumerated()), id: \.offset) { i, url in
+                    ForEach(Array(recents.prefix(9).enumerated()), id: \.offset) { i, url in
                         RecentRow(url: url, onOpen: actions.onOpenURL).brandEnter(delay: 0.1 + Double(i) * 0.03)
                     }
                 }
@@ -147,37 +163,38 @@ public struct HomeView: View {
             FilePicker(file: convert.file, prompt: "Choose a file…", dropLabel: "Drop a file to convert",
                        onPick: actions.onPickConvertFile, onDrop: actions.onConvertFile)
             if convert.file != nil {
-                Text("Convert to").brandLabel().padding(.top, Brand.Spacing.xs)
+                Text("Convert to").brandLabel().padding(.top, 8).padding(.leading, 2)
                 if convert.targets.isEmpty {
                     Text("OpenText can't convert this kind of file.").font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted)
                 } else {
-                    // Every format visible at once: pills in a grid, the chosen one in the selection gradient.
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 66), spacing: 6)], alignment: .leading, spacing: 6) {
-                        ForEach(convert.targets, id: \.self) { t in
-                            let on = convert.target == t
-                            Button { withAnimation(Brand.Motion.settle) { convert.target = t } } label: {
-                                Text(".\(t)").font(Brand.Fonts.body(13, weight: on ? .semibold : .medium))
-                                    .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.ink)
-                                    .frame(maxWidth: .infinity).frame(height: 30)
-                                    .background(Capsule().fill(on ? AnyShapeStyle(Brand.Palette.selectionGradient) : AnyShapeStyle(Brand.Palette.abFill)))
-                                    .overlay(Capsule().inset(by: 0.5).stroke(Brand.Palette.abHair.opacity(on ? 0 : 1), lineWidth: 1))
-                                    .contentShape(Capsule())
+                    ScrollView {
+                        VStack(spacing: 2) {
+                            ForEach(convert.targets, id: \.self) { t in
+                                let on = convert.target == t
+                                Button { withAnimation(Brand.Motion.settle) { convert.target = t } } label: {
+                                    HStack {
+                                        Text(ConvertSheet.title(t)).font(Brand.Fonts.body(13.5, weight: on ? .semibold : .medium))
+                                            .foregroundStyle(BrandRowText.primary(on))
+                                        Spacer()
+                                        Text(".\(t)").font(Brand.Fonts.body(12.5)).foregroundStyle(BrandRowText.secondary(on))
+                                    }
+                                    .padding(.horizontal, 12).frame(height: 38)
+                                    .background(BrandRowBackground(selected: on))
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(PressableStyle())
+                                .accessibilityLabel("Convert to \(t)")
+                                .accessibilityAddTraits(on ? .isSelected : [])
                             }
-                            .buttonStyle(PressableStyle())
-                            .help(ConvertSheet.title(t))
-                            .accessibilityLabel("Convert to \(t)")
-                            .accessibilityAddTraits(on ? .isSelected : [])
                         }
                     }
-                    if let t = convert.target {
-                        Text(ConvertSheet.title(t)).font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted)
-                            .contentTransition(.opacity)
-                    }
+                    .scrollIndicators(.automatic)
                 }
             }
             Spacer(minLength: 0)
             StatusLine(status: convert.status, onReveal: actions.onReveal)
             HStack {
+                Text("Saved next to the original").font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted)
                 Spacer()
                 Button(convert.busy ? "Converting…" : "Convert", action: actions.onConvert)
                     .buttonStyle(.secondaryAction)
@@ -190,26 +207,53 @@ public struct HomeView: View {
 
     private var lockCard: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
-            FilePicker(file: lock.file, prompt: "Choose a file…", dropLabel: "Drop a file to lock",
-                       onPick: actions.onPickLockFile, onDrop: actions.onLockFile)
-            if lock.file != nil {
-                Text("Password").brandLabel().padding(.top, Brand.Spacing.xs)
+            if lock.file == nil {
+                DropZone(label: "Drop a file to lock", height: nil, targeted: $dropTargeted) { urls in
+                    guard let url = urls.first(where: \.isFileURL) else { return false }
+                    actions.onLockFile(url); return true
+                }
+                Text("Pick a file, then a password. The original moves to the Trash.")
+                    .font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 2)
+            } else {
+                FilePicker(file: lock.file, prompt: "Choose a file…", dropLabel: "Drop a file to lock",
+                           onPick: actions.onPickLockFile, onDrop: actions.onLockFile)
                 SecureField("Password", text: $lock.password).brandField().accessibilityLabel("Password")
                 SecureField("Type it again", text: $lock.confirm).brandField().accessibilityLabel("Type it again")
                     .onSubmit { if !lock.busy { actions.onLock() } }
-                Text("The original moves to the Trash. You need this password, or your recovery key, to open it.")
+                Text("You need this password, or your recovery key, to open it.")
                     .font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
             StatusLine(status: lock.status, onReveal: actions.onReveal)
             HStack {
                 Spacer()
-                Button(lock.busy ? "Locking…" : "Lock", action: actions.onLock)
-                    .buttonStyle(.secondaryAction)
-                    .disabled(lock.busy || lock.file == nil || lock.password.isEmpty)
+                if lock.file == nil {
+                    Button("Choose a file…", action: actions.onPickLockFile).buttonStyle(.secondaryAction)
+                } else {
+                    Button(lock.busy ? "Locking…" : "Lock", action: actions.onLock)
+                        .buttonStyle(.secondaryAction)
+                        .disabled(lock.busy || lock.password.isEmpty)
+                }
             }
         }
         .brandShake(trigger: lock.status?.isError == true ? lock.status : nil)
+    }
+}
+
+/// Small type tag in a file row: PDF, MD, PNG…
+struct FileTypeTag: View {
+    let url: URL
+    var selected = false
+    var body: some View {
+        Text(url.pathExtension.isEmpty ? "FILE" : url.pathExtension.uppercased())
+            .font(Brand.Fonts.body(8.5, weight: .semibold)).tracking(0.2)
+            .lineLimit(1).minimumScaleFactor(0.7)
+            .foregroundStyle(selected ? Brand.Palette.onPrimary : Brand.Palette.muted)
+            .frame(width: 28, height: 28)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(selected ? Color.white.opacity(0.2) : Brand.Palette.well))
+            .accessibilityHidden(true)
     }
 }
 
@@ -225,15 +269,15 @@ struct FilePicker: View {
     var body: some View {
         if let file {
             HStack(spacing: Brand.Spacing.sm) {
-                Image(systemName: "doc").font(.system(size: 14)).foregroundStyle(Brand.Palette.primaryText)
-                Text(file.lastPathComponent).font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
+                FileTypeTag(url: file).background(RoundedRectangle(cornerRadius: 8).fill(Brand.Palette.card))
+                Text(file.lastPathComponent).font(Brand.Fonts.body(13.5, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
                     .lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
                 Button("Change", action: onPick)
                     .buttonStyle(PressableStyle())
-                    .font(Brand.Fonts.body(12, weight: .semibold)).underline().foregroundStyle(Brand.Palette.primaryText)
+                    .font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.primary)
             }
-            .padding(.horizontal, 10).frame(height: 40)
+            .padding(.horizontal, 8).frame(height: 44)
             .background(RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous).fill(Brand.Palette.priTint))
             .overlay(RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous)
                 .strokeBorder(targeted ? Brand.Palette.primary : .clear, lineWidth: 1.5))
@@ -242,7 +286,7 @@ struct FilePicker: View {
         } else {
             VStack(alignment: .leading, spacing: Brand.Spacing.sm) {
                 Button(prompt, action: onPick).buttonStyle(.secondaryAction)
-                DropZone(label: dropLabel, targeted: $targeted) { pick($0) }
+                DropZone(label: dropLabel, height: 52, targeted: $targeted) { pick($0) }
             }
         }
     }
@@ -254,25 +298,34 @@ struct FilePicker: View {
     }
 }
 
-/// Dashed well that accepts dropped files.
+/// Well that accepts dropped files. `height` nil fills the space it is given.
 struct DropZone: View {
     let label: String
+    var height: CGFloat? = 52
     @Binding var targeted: Bool
     let onDrop: ([URL]) -> Bool
 
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "arrow.down.doc").font(.system(size: 13))
-            Text(label).font(Brand.Fonts.body(13, weight: .medium))
+        let shape = RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous)
+        Group {
+            if height == nil {
+                VStack(spacing: 6) {
+                    Image(systemName: "arrow.down").font(.system(size: 17, weight: .medium))
+                    Text(label).font(Brand.Fonts.body(13, weight: .medium))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.down").font(.system(size: 12, weight: .semibold))
+                    Text(label).font(Brand.Fonts.body(13, weight: .medium))
+                }
+                .frame(maxWidth: .infinity).frame(height: height)
+            }
         }
         .foregroundStyle(targeted ? Brand.Palette.ink : Brand.Palette.muted)
-        .frame(maxWidth: .infinity).frame(height: 48)
-        .background(RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous)
-            .fill(targeted ? Brand.Palette.priTint : Brand.Palette.abFill))
-        .overlay(RoundedRectangle(cornerRadius: Brand.Radius.field, style: .continuous)
-            .strokeBorder(targeted ? Brand.Palette.primary : Brand.Palette.line,
-                          style: StrokeStyle(lineWidth: targeted ? 1.5 : 1, dash: targeted ? [] : [4, 3])))
-        .scaleEffect(targeted ? 1.02 : 1)
+        .background(shape.fill(targeted ? Brand.Palette.priTint : Brand.Palette.well))
+        .overlay(shape.strokeBorder(Brand.Palette.primary, lineWidth: targeted ? 2 : 0))
+        .scaleEffect(targeted ? 1.015 : 1)
         .animation(Brand.Motion.press, value: targeted)
         .dropDestination(for: URL.self) { urls, _ in onDrop(urls) } isTargeted: { targeted = $0 }
     }
@@ -293,7 +346,7 @@ struct StatusLine: View {
                 if let url = status.reveal {
                     Button("Show in Finder") { onReveal(url) }
                         .buttonStyle(PressableStyle())
-                        .font(Brand.Fonts.body(12, weight: .semibold)).underline().foregroundStyle(Brand.Palette.primaryText)
+                        .font(Brand.Fonts.body(12, weight: .semibold)).foregroundStyle(Brand.Palette.primary)
                 }
             }
             .foregroundStyle(status.isError ? Brand.Palette.ink : Brand.Palette.muted)
@@ -302,27 +355,44 @@ struct StatusLine: View {
     }
 }
 
-/// One recent file: name and folder, hover wash, springy press.
+/// One recent file: type tag, name and folder, date; hover wash, springy press.
 struct RecentRow: View {
     let url: URL
     let onOpen: (URL) -> Void
     @State private var hovering = false
     var body: some View {
         Button { onOpen(url) } label: {
-            HStack(spacing: Brand.Spacing.sm) {
-                Text(url.lastPathComponent).font(Brand.Fonts.body(13, weight: .medium))
-                    .foregroundStyle(Brand.Palette.ink).lineLimit(1).truncationMode(.middle)
+            HStack(spacing: 12) {
+                FileTypeTag(url: url)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(url.lastPathComponent).font(Brand.Fonts.body(13.5, weight: .semibold))
+                        .foregroundStyle(Brand.Palette.ink).lineLimit(1).truncationMode(.middle)
+                    Text(url.deletingLastPathComponent().lastPathComponent)
+                        .font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted).lineLimit(1)
+                }
                 Spacer(minLength: Brand.Spacing.sm)
-                Text(url.deletingLastPathComponent().lastPathComponent)
-                    .font(Brand.Fonts.body(12)).foregroundStyle(Brand.Palette.muted)
-                    .lineLimit(1).truncationMode(.tail).layoutPriority(-1)
+                if let date = RecentRow.modified(url) {
+                    Text(date).font(Brand.Fonts.body(12.5)).foregroundStyle(Brand.Palette.muted).lineLimit(1)
+                }
             }
-            .padding(.horizontal, 8)
-            .frame(height: 30).contentShape(Rectangle())
+            .padding(.horizontal, 12)
+            .frame(height: 44).contentShape(Rectangle())
             .background(BrandRowBackground(selected: false, hovering: hovering))
         }
         .buttonStyle(PressableStyle())
         .brandHover($hovering)
         .accessibilityLabel("Open \(url.lastPathComponent)")
+    }
+
+    /// "2 min ago", "Yesterday", "Mon", "Nov 3": when the file last changed.
+    static func modified(_ url: URL) -> String? {
+        guard let d = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate else { return nil }
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        if Date().timeIntervalSince(d) < 86_400 { return f.localizedString(for: d, relativeTo: Date()) }
+        if Calendar.current.isDateInYesterday(d) { return "Yesterday" }
+        let df = DateFormatter()
+        df.setLocalizedDateFormatFromTemplate(Date().timeIntervalSince(d) < 6 * 86_400 ? "EEE" : "MMM d")
+        return df.string(from: d)
     }
 }

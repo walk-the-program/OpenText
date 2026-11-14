@@ -45,7 +45,7 @@ struct LockSheet: View {
         }
         .padding(Brand.Spacing.xl)
         .frame(width: 400)
-        .background(Brand.Palette.canvas)
+        .background(Brand.Palette.card)
         .brandShake(trigger: error)
     }
 
@@ -87,7 +87,7 @@ struct PinMismatchSheet: View {
         }
         .padding(Brand.Spacing.xl)
         .frame(width: 460)
-        .background(Brand.Palette.canvas)
+        .background(Brand.Palette.card)
     }
 }
 
@@ -109,7 +109,7 @@ struct ChangedOutsideSheet: View {
         }
         .padding(Brand.Spacing.xl)
         .frame(width: 420)
-        .background(Brand.Palette.canvas)
+        .background(Brand.Palette.card)
     }
 }
 
@@ -133,7 +133,7 @@ struct NoticeCard: View {
         }
         .padding(Brand.Spacing.xl)
         .frame(width: 400)
-        .background(Brand.Palette.canvas)
+        .background(Brand.Palette.card)
     }
 }
 

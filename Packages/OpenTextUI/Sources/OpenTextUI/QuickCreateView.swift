@@ -66,29 +66,41 @@ public struct QuickCreateView: View {
                                       title: { ".\($0)" }, accessibilityTitle: { "\($0) file" })
             }
             gap(Brand.Spacing.lg)
-            HStack(spacing: 4) {
-                Text("Save to:").font(Brand.Fonts.body(13, weight: .medium)).foregroundStyle(Brand.Palette.ink)
-                Text(state.folderName).font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
-                Text("·").foregroundStyle(Brand.Palette.muted).padding(.horizontal, 2)
-                Button("Change", action: onChangeFolder)
-                    .buttonStyle(.plain)
-                    .font(Brand.Fonts.body(13, weight: .semibold)).underline(true).foregroundStyle(Brand.Palette.ink)
-                    .keyboardShortcut("o", modifiers: .command)
-            }
-            gap(Brand.Spacing.xl, flexible: true)
-            HStack(spacing: Brand.Spacing.sm) {
-                if !embedded {
+            if embedded {
+                // Home tile: where it goes and Create share one row.
+                HStack(spacing: Brand.Spacing.sm) { saveTo; Spacer(minLength: 8); createButton }
+            } else {
+                saveTo
+                gap(Brand.Spacing.xl, flexible: true)
+                HStack(spacing: Brand.Spacing.sm) {
                     Text("Return to create").font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
                     Text("·").foregroundStyle(Brand.Palette.muted)
                     Text("Esc to close").font(Brand.Fonts.body(12, weight: .medium)).foregroundStyle(Brand.Palette.muted)
+                    Spacer()
+                    createButton
                 }
-                Spacer()
-                Button("Create", action: onCreate).buttonStyle(.primaryAction).keyboardShortcut(.defaultAction)
             }
         }
         .modifier(PopoverChrome(embedded: embedded))
         .onExitCommand(perform: onCancel)
         .onAppear { nameFocused = true }
+    }
+
+    private var saveTo: some View {
+        HStack(spacing: 5) {
+            Text("Save to").font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted)
+            Text(state.folderName).font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.ink)
+                .lineLimit(1).truncationMode(.middle)
+            Text("·").foregroundStyle(Brand.Palette.muted)
+            Button("Change", action: onChangeFolder)
+                .buttonStyle(PressableStyle())
+                .font(Brand.Fonts.body(13, weight: .semibold)).foregroundStyle(Brand.Palette.primary)
+                .keyboardShortcut("o", modifiers: .command)
+        }
+    }
+
+    private var createButton: some View {
+        Button("Create", action: onCreate).buttonStyle(.primaryAction).keyboardShortcut(.defaultAction)
     }
 }
 
@@ -96,7 +108,7 @@ private struct PopoverChrome: ViewModifier {
     let embedded: Bool
     func body(content: Content) -> some View {
         if embedded {
-            content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            content.frame(maxWidth: .infinity, alignment: .topLeading)
         } else {
             content
                 .padding(.top, 20).padding(.horizontal, 22).padding(.bottom, 18)

@@ -115,11 +115,11 @@ private func isRed(_ c: NSColor?) -> Bool { guard let c else { return false }; r
     @Test func textBoxIsBurnedIn() throws {
         let doc = makeDocument(pages: 1, label: "")
         let page = doc.page(at: 0)!
-        page.addAnnotation(TextBoxAnnotation(text: "Approved by Walker", bounds: CGRect(x: 40, y: 100, width: 220, height: 28)))
+        page.addAnnotation(TextBoxAnnotation(text: "Signed off by Walker", bounds: CGRect(x: 40, y: 100, width: 220, height: 28)))
         let flat = try #require(PDFPageOps.flattenedCopy(of: doc))
         let data = try #require(flat.dataRepresentation())
         let reopened = try #require(PDFDocument(data: data))
-        #expect(reopened.page(at: 0)?.string?.contains("Approved by Walker") == true)
+        #expect(reopened.page(at: 0)?.string?.contains("Signed off by Walker") == true, "ligatures must not garble copied text: \(reopened.page(at: 0)?.string ?? "nil")")
     }
 
     @Test func onlyDocumentsWithOwnAnnotationsNeedFlattening() {

@@ -61,8 +61,7 @@ struct ToolbarRow<Tools: View, Trailing: View>: View {
         }
         .padding(.horizontal, 14)
         .frame(height: Brand.Size.toolbarHeight)
-        .background(Brand.Palette.card)
-        .overlay(alignment: .bottom) { Rectangle().fill(Brand.Palette.abHair).frame(height: 1) }
+        .background(Brand.Palette.chrome)
     }
 }
 
@@ -83,5 +82,44 @@ struct ToolButton: View {
 extension View {
     @ViewBuilder func optionalShortcut(_ s: KeyboardShortcut?) -> some View {
         if let s { keyboardShortcut(s) } else { self }
+    }
+}
+
+/// Bento tool group: tools share one well track; the active one fills steel.
+struct ToolGroup<Content: View>: View {
+    @ViewBuilder var content: Content
+    var body: some View {
+        HStack(spacing: 2) { content }
+            .padding(3)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.Palette.well))
+    }
+}
+
+/// Label of one tool in a `ToolGroup`. Values only, so presses never swap the view.
+struct GroupedToolLabel: View {
+    let title: String
+    let active: Bool
+    var body: some View {
+        Text(title)
+            .font(Brand.Fonts.body(13, weight: .semibold))
+            .foregroundStyle(active ? Brand.Palette.onPrimary : Brand.Palette.muted)
+            .padding(.horizontal, 12).frame(height: 26)
+            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(active ? Brand.Palette.primary : .clear))
+            .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .animation(Brand.Motion.settle, value: active)
+    }
+}
+
+struct GroupedTool: View {
+    let title: String
+    var active = false
+    var shortcut: KeyboardShortcut? = nil
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) { GroupedToolLabel(title: title, active: active) }
+            .buttonStyle(PressableStyle())
+            .optionalShortcut(shortcut)
+            .accessibilityLabel(title)
+            .accessibilityAddTraits(active ? .isSelected : [])
     }
 }

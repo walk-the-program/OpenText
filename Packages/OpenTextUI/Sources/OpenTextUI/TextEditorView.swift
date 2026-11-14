@@ -5,7 +5,7 @@ import OpenTextDesign
 public struct TextEditorActions {
     public var onConvert: () -> Void
     public var onLock: () -> Void
-    /// .txt only: flip between Inter and Geist Mono (D-016). The app stores the choice and passes `monospace` back.
+    /// .txt only: flip between Geist and Geist Mono (D-016). The app stores the choice and passes `monospace` back.
     public var onToggleMonospace: () -> Void
 
     public init(onConvert: @escaping () -> Void = {}, onLock: @escaping () -> Void = {}, onToggleMonospace: @escaping () -> Void = {}) {
@@ -86,25 +86,24 @@ public struct TextEditorView: View {
         VStack(spacing: 0) {
             ToolbarRow(header: headerWithStatus, toolsOpacity: toolbarOpacity) {
                 if isMarkdown {
+                    BrandSegmented(options: Mode.allCases.map(\.rawValue), selection: Binding(
+                        get: { mode.rawValue }, set: { mode = Mode(rawValue: $0) ?? .edit }))
+                        .keyboardShortcut("p", modifiers: [.command, .shift])
+                    Rectangle().fill(Brand.Palette.line).frame(width: 1, height: 20).padding(.horizontal, 4)
                     ToolButton(title: "Heading", shortcut: key(.init("1", modifiers: [.command, .option]))) { controller.perform(.heading) }.disabled(mode == .preview)
                     ToolButton(title: "Bold", shortcut: key(.init("b", modifiers: .command))) { controller.perform(.bold) }.disabled(mode == .preview)
                     ToolButton(title: "List", shortcut: key(.init("l", modifiers: [.command, .shift]))) { controller.perform(.list) }.disabled(mode == .preview)
                     ToolButton(title: "Link", shortcut: key(.init("k", modifiers: .command))) { controller.perform(.link) }.disabled(mode == .preview)
                 } else {
                     // Shows the font in use; picking the other one switches (⇧⌘M toggles).
-                    BrandSegmentedControl(["Inter", "Mono"], selection: Binding(
-                        get: { monospace ? "Mono" : "Inter" },
+                    BrandSegmentedControl(["Geist", "Mono"], selection: Binding(
+                        get: { monospace ? "Mono" : "Geist" },
                         set: { if ($0 == "Mono") != monospace { actions.onToggleMonospace() } }),
                         title: { $0 }, accessibilityTitle: { "\($0) font" })
                     .background(Button("") { actions.onToggleMonospace() }
                         .keyboardShortcut("m", modifiers: [.command, .shift]).opacity(0).allowsHitTesting(false))
                 }
             } trailing: {
-                if isMarkdown {
-                    BrandSegmented(options: Mode.allCases.map(\.rawValue), selection: Binding(
-                        get: { mode.rawValue }, set: { mode = Mode(rawValue: $0) ?? .edit }))
-                        .keyboardShortcut("p", modifiers: [.command, .shift])
-                }
                 ToolButton(title: "Lock", shortcut: .init("l", modifiers: [.command, .option])) { actions.onLock() }
                 Button("Convert", action: actions.onConvert)
                     .buttonStyle(.primaryAction).keyboardShortcut("e", modifiers: [.command, .shift])
@@ -124,10 +123,10 @@ public struct TextEditorView: View {
                         }
                     }
                     .animation(Brand.Motion.settle, value: mode)
-                    .frame(maxWidth: 860, maxHeight: .infinity)
-                    .background(Brand.Palette.card)
-                    .overlay(alignment: .leading) { Rectangle().fill(Brand.Palette.abHair).frame(width: 1) }
-                    .overlay(alignment: .trailing) { Rectangle().fill(Brand.Palette.abHair).frame(width: 1) }
+                    .frame(maxWidth: 820, maxHeight: .infinity)
+                    .background(UnevenRoundedRectangle(topLeadingRadius: Brand.Radius.card, topTrailingRadius: Brand.Radius.card,
+                                                       style: .continuous).fill(Brand.Palette.card))
+                    .padding(.top, 14)
                     Spacer(minLength: 0)
                 }
             }
@@ -283,11 +282,12 @@ enum PlainTextStyler {
 
     static func baseAttributes(monospace: Bool) -> [NSAttributedString.Key: Any] {
         let style = NSMutableParagraphStyle()
-        style.lineSpacing = monospace ? 8 : 11
-        style.paragraphSpacing = monospace ? 4 : 10
+        // About 1.7 line height, as in the approved Bento render; list lines stay close, paragraphs breathe.
+        style.lineSpacing = monospace ? 8 : 10
+        style.paragraphSpacing = monospace ? 2 : 3
         var attrs: [NSAttributedString.Key: Any] = [.font: baseFont(monospace: monospace), .foregroundColor: Brand.NSPalette.ink,
                                                     .paragraphStyle: style]
-        if !monospace { attrs[.kern] = 0.15 }
+        if !monospace { attrs[.kern] = 0.16 }
         return attrs
     }
 

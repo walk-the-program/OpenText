@@ -29,29 +29,26 @@ public struct BrandSegmentedControl<Option: Hashable>: View {
                     withAnimation(Brand.Motion.resolved(Brand.Motion.settle, reduceMotion: reduceMotion)) { selection = option }
                 } label: {
                     Text(title(option))
-                        .font(Brand.Fonts.body(13, weight: on ? .semibold : .medium))
-                        .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.abMuted)
-                        .padding(.horizontal, 14)
+                        .font(Brand.Fonts.body(13, weight: .semibold))
+                        .foregroundStyle(on ? Brand.Palette.onPrimary : Brand.Palette.muted)
+                        .padding(.horizontal, 13)
                         .frame(maxWidth: fill ? .infinity : nil)
                         .frame(height: Brand.Size.control - 4)
                         .background {
                             if on {
-                                Capsule().fill(Brand.Palette.selectionGradient)
-                                    .shadow(color: Brand.Palette.shadowNear, radius: 1, y: 1)
-                                    .shadow(color: Brand.Palette.shadowSoft, radius: 5, y: 3)
+                                RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Brand.Palette.primary)
                                     .matchedGeometryEffect(id: "pill", in: pill)
                             }
                         }
-                        .contentShape(Capsule())
+                        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
                 .buttonStyle(PressableStyle())
                 .accessibilityLabel(accessibilityTitle(option))
                 .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
-        .padding(2)
-        .background(Capsule().fill(Brand.Palette.abFill))
-        .overlay(Capsule().inset(by: 0.5).stroke(Brand.Palette.abHair, lineWidth: 1))
+        .padding(3)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.Palette.well))
     }
 }
 
@@ -65,16 +62,22 @@ public struct PressableStyle: ButtonStyle {
     }
 }
 
-/// Kit list row selection: priTint wash, a primary edge and a check mark. Hover: abFill wash.
+/// Kit list row selection: the selected row fills solid steel (put `BrandRowText` colours on its text);
+/// hover is a quiet well wash.
 public struct BrandRowBackground: View {
     let selected: Bool
     let hovering: Bool
     public init(selected: Bool, hovering: Bool = false) { self.selected = selected; self.hovering = hovering }
     public var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Brand.Radius.md, style: .continuous)
-        shape.fill(selected ? Brand.Palette.priTint : (hovering ? Brand.Palette.abFill : .clear))
-            .overlay(shape.strokeBorder(Brand.Palette.primary.opacity(selected ? 0.7 : 0), lineWidth: 1))
+        RoundedRectangle(cornerRadius: 11, style: .continuous)
+            .fill(selected ? Brand.Palette.primary : (hovering ? Brand.Palette.well : .clear))
             .animation(Brand.Motion.settle, value: selected)
             .animation(Brand.Motion.settle, value: hovering)
     }
+}
+
+/// Text colours on a list row: on-primary when the row is selected.
+public enum BrandRowText {
+    public static func primary(_ selected: Bool) -> Color { selected ? Brand.Palette.onPrimary : Brand.Palette.ink }
+    public static func secondary(_ selected: Bool) -> Color { selected ? Brand.Palette.onPrimary.opacity(0.78) : Brand.Palette.muted }
 }

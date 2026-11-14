@@ -83,9 +83,12 @@ public struct PDFReaderView: View {
     public var body: some View {
         VStack(spacing: 0) {
             ToolbarRow(header: headerWithStatus) {
-                ToolButton(title: "Highlight", shortcut: key(.init("h", modifiers: [.command, .shift])), isActive: model.highlightMode) { model.highlight() }
-                ToolButton(title: "Text", shortcut: key(.init("t", modifiers: [.command, .shift]))) { model.addTextBox() }
-                signMenu
+                ToolGroup {
+                    GroupedTool(title: "Select", active: !model.highlightMode) { model.highlightMode = false }
+                    GroupedTool(title: "Highlight", active: model.highlightMode, shortcut: key(.init("h", modifiers: [.command, .shift]))) { model.highlight() }
+                    GroupedTool(title: "Text", shortcut: key(.init("t", modifiers: [.command, .shift]))) { model.addTextBox() }
+                    signMenu
+                }
                 pagesMenu
                 ToolButton(title: "Search", shortcut: key(.init("f", modifiers: .command)), isActive: model.showsSearch) { model.toggleSearch() }
                 zoomMenu
@@ -95,13 +98,33 @@ public struct PDFReaderView: View {
             }
             if model.showsSearch { searchBar }
             if model.highlightMode { highlightHint }
-            HStack(spacing: 0) {
+            HStack(spacing: 14) {
                 if model.showsSidebar { sidebar }
                 Group {
                     if offscreenStill { PageStill(model: model) } else { PDFCanvas(model: model) }
                 }
-                .background(Brand.Palette.canvas)
+                .background(Brand.Palette.well)
+                .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.card, style: .continuous))
+                .overlay(alignment: .bottom) {
+                    if let toast = model.toast {
+                        HStack(spacing: 14) {
+                            Text(toast).font(Brand.Fonts.body(13, weight: .medium))
+                            Button("Undo") { model.undo.undo(); model.toast = nil }
+                                .buttonStyle(PressableStyle())
+                                .font(Brand.Fonts.body(13, weight: .semibold))
+                                .padding(.horizontal, 12).frame(height: 30)
+                                .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Brand.Palette.canvas.opacity(0.16)))
+                        }
+                        .foregroundStyle(Brand.Palette.canvas)
+                        .padding(.leading, 16).padding(.trailing, 7).frame(height: 44)
+                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Brand.Palette.ink))
+                        .padding(.bottom, 20)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .animation(Brand.Motion.enter, value: model.toast)
             }
+            .padding(14)
         }
         .background(Brand.Palette.canvas)
         .animation(Brand.Motion.settle, value: model.showsSearch)
@@ -119,8 +142,8 @@ public struct PDFReaderView: View {
         Menu {
             Button("New Signature…") { model.newSignature() }
             Button("Clear Saved Signature") { actions.clearSignature() }
-        } label: { Text("Sign") } primaryAction: { model.sign() }
-        .menuStyle(.button).buttonStyle(.toolbarItem).fixedSize()
+        } label: { GroupedToolLabel(title: "Sign", active: false) } primaryAction: { model.sign() }
+        .menuStyle(.button).buttonStyle(PressableStyle()).menuIndicator(.hidden).fixedSize()
         .optionalShortcut(key(.init("s", modifiers: [.control, .command])))
         .accessibilityLabel("Sign")
     }
@@ -202,12 +225,11 @@ public struct PDFReaderView: View {
             }
             .scrollContentBackground(.hidden)
         }
-        .padding(12)
-        .frame(width: 188)
+        .padding(14)
+        .frame(width: 200)
         .frame(maxHeight: .infinity, alignment: .top)
-        .cardSurface(radius: Brand.Radius.lg)
+        .cardSurface(radius: Brand.Radius.card)
         .dropDestination(for: URL.self) { urls, _ in model.insertFiles(urls, at: model.pageCount) }
-        .padding(10)
         .focusable()
         .focused($sidebarFocused)
         .focusEffectDisabled()
@@ -223,8 +245,8 @@ private struct PageStill: View {
         if let page = model.document.page(at: model.currentIndex) {
             let box = page.bounds(for: .cropBox)
             let image = page.thumbnail(of: CGSize(width: 1100, height: 1100 * box.height / box.width), for: .cropBox)
-            Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: 860)
-                .overlay(Rectangle().stroke(Brand.Palette.abHair, lineWidth: 1))
+            Image(nsImage: image).resizable().scaledToFit().frame(maxWidth: 560)
+                .padding(.top, 26)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
@@ -247,8 +269,7 @@ private struct ThumbnailCell: View {
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: Brand.Radius.sm))
             .overlay(RoundedRectangle(cornerRadius: Brand.Radius.sm)
-                .stroke(selected ? Brand.Palette.primary : Brand.Palette.abHair, lineWidth: selected ? 2.5 : 1))
-            .shadow(color: Brand.Palette.shadowNear, radius: 1, y: 1)
+                .stroke(selected ? Brand.Palette.primary : Brand.Palette.line, lineWidth: selected ? 2.5 : 1))
             .scaleEffect(selected ? 1 : 0.97)
             .animation(Brand.Motion.settle, value: selected)
             Text("\(index + 1)").font(Brand.Fonts.body(11, weight: .semibold))
@@ -288,6 +309,9 @@ final class PDFReaderModel {
     var highlightMode = false
     @ObservationIgnored var commands: DocumentCommands?
     var showsSignaturePad = false
+    /// Short confirmation at the foot of the page ("Signature placed…" with Undo); clears itself.
+    var toast: String?
+    @ObservationIgnored private var toastTask: Task<Void, Never>?
     var query = ""
     var results: [PDFSelection] = []
     var resultIndex = 0
@@ -593,6 +617,16 @@ final class PDFReaderModel {
         rect.origin = CGPoint(x: c.x - rect.width / 2, y: c.y - rect.height / 2)
         add(ImageStampAnnotation(image: image, bounds: AnnotationGeometry.clamp(rect, within: page.bounds(for: .cropBox))),
             to: page, name: "Signature")
+        showToast("Signature placed. Drag to move, corners to resize.")
+    }
+
+    func showToast(_ text: String) {
+        toast = text
+        toastTask?.cancel()
+        toastTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(5))
+            if !Task.isCancelled { self?.toast = nil }
+        }
     }
 
     func newSignature() { showsSignaturePad = true }
@@ -652,7 +686,7 @@ struct PDFCanvas: NSViewRepresentable {
         view.displayMode = .singlePageContinuous
         view.displaysPageBreaks = true
         view.pageBreakMargins = NSEdgeInsets(top: 16, left: 24, bottom: 16, right: 24)
-        view.backgroundColor = Brand.NSPalette.canvas
+        view.backgroundColor = Brand.NSPalette.well
         model.pdfView = view
         context.coordinator.observe(view, model: model)
         return view
@@ -660,7 +694,7 @@ struct PDFCanvas: NSViewRepresentable {
 
     func updateNSView(_ view: EditablePDFView, context: Context) {
         if view.document !== model.document { view.document = model.document }
-        view.backgroundColor = Brand.NSPalette.canvas
+        view.backgroundColor = Brand.NSPalette.well
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }

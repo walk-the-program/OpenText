@@ -8,15 +8,15 @@
   },
   "fonts": {
     "heading": {
-      "family": "Plus Jakarta Sans",
+      "family": "Geist",
       "weight": "600"
     },
     "display": {
-      "family": "Plus Jakarta Sans",
+      "family": "Geist",
       "weight": "300"
     },
     "body": {
-      "family": "Inter",
+      "family": "Geist",
       "weight": "400"
     },
     "mono": {
@@ -26,62 +26,63 @@
   },
   "type": {
     "display-size": "30",
-    "large-title-size": "26",
-    "heading-size": "22",
+    "large-title-size": "24",
+    "heading-size": "21",
     "title2-size": "17",
     "body-size": "14",
     "callout-size": "13",
     "footnote-size": "12",
     "caption-size": "11",
-    "heading-tracking": "-0.01em",
+    "heading-tracking": "-0.015em",
     "body-tracking": "0",
-    "label-tracking": "+0.1em"
+    "label-case": "sentence"
   },
   "radius": {
     "sm": "8",
-    "md": "10",
+    "md": "9",
     "lg": "14",
     "field": "12",
-    "card": "20",
-    "button": "pill"
+    "button": "12",
+    "chip": "8",
+    "tile": "20"
   },
   "accent-budget": "0.10",
   "light": {
-    "canvas": "#f5f7f9",
-    "surface": "#ffffff",
-    "ink": "#1c2126",
-    "muted": "#686c70",
-    "line": "#d4d7d9",
-    "primary": "#98b0cc",
-    "ab-m-hue": "#9493d1",
-    "on-primary": "#141414",
+    "canvas": "#e8eaed",
+    "surface": "#fbfbfc",
+    "well": "#eff1f3",
+    "chrome": "#f3f4f6",
+    "ink": "#16191d",
+    "muted": "#646b74",
+    "line": "#16191d",
+    "primary": "#5d7189",
+    "primary-pressed": "#4c5d72",
+    "on-primary": "#ffffff",
     "accent": "#cacd7e",
     "on-accent": "#141414",
-    "pri-tint": "#eaeef4",
-    "sec-tint": "#f2f1f3",
-    "primary-text": "#607081"
+    "pri-tint": "#e3e8ee"
   },
   "dark": {
-    "canvas": "#1c2126",
-    "surface": "#2b3035",
-    "ink": "#f5f7f9",
-    "muted": "#9ea1a5",
-    "line": "#3d4146",
-    "primary": "#98b0cc",
-    "ab-m-hue": "#9493d1",
-    "on-primary": "#141414",
+    "canvas": "#121417",
+    "surface": "#1d2024",
+    "well": "#25292e",
+    "chrome": "#181b1f",
+    "ink": "#eef0f2",
+    "muted": "#a0a7b0",
+    "line": "#eef0f2",
+    "primary": "#7d92ab",
+    "primary-pressed": "#6a7e96",
+    "on-primary": "#0f1215",
     "accent": "#cacd7e",
     "on-accent": "#141414",
-    "pri-tint": "#2b323a",
-    "sec-tint": "#3b3d41",
-    "primary-text": "#98b0cc"
+    "pri-tint": "#2a323c"
   },
-  "style": "Mesh Gradient (BUILD-PACK.md), Mac translation",
+  "style": "Bento Grid (Looks Good, round 3 approved 2026-11-14), Mac scale; build pack design/looks-good-build-pack.md",
   "motion": {
-    "press": "spring 0.22/0.62, scale 0.97",
+    "press": "spring 0.22/0.62, scale 0.96, darker fill",
     "settle": "spring 0.36/0.74",
-    "enter": "spring 0.42/0.80, opacity + scale 0.98 + 6pt rise",
+    "enter": "spring 0.42/0.80",
     "reduce-motion": "instant"
   },
-  "gradient": "primary to abMHue (#9493d1), 135deg buttons, 140deg selection"
+  "gradient": "none (Bento: flat fills; depth is tile vs canvas contrast)"
 }

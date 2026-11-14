@@ -157,3 +157,13 @@ Newest at the bottom. Never delete an entry; mark it superseded instead.
 **Mac translation:** The pack is written for iPhone, so its phone type scale is scaled down for the Mac: display 30, large title 26, title 22, title 2 17, body 14, caption 11. Buttons are 34pt and fields 32pt, and the Mac minimum hit area is 28pt (see docs/review/2026-11-10-mesh/plan.md).
 **Motion:** Walker asked for bouncy and premium, which overrides the pack's plain ease-out. Presses, selections and entrances use springs, and Reduce Motion swaps state instantly.
 **Not changed:** The logo, the app icon and the citron fold.
+
+## D-023 — Bento Grid with Geist replaces Mesh Gradient (supersedes D-022's look)
+**Decision:** OpenText uses the Bento Grid style from Looks Good, on its own steel palette, with Geist for all UI text and Geist Mono for the editor's mono option.
+- Tiles (#fbfbfc on a #e8eaed canvas) carry no borders and no shadows; contrast between tile and canvas is the only depth.
+- Fields, tracks and drop zones are a quiet "well" fill.
+- The primary button and every selection are solid steel #5d7189 (#7d92ab in dark). There are no gradients.
+- Press: scale 0.96 with a darker fill.
+- Home is three columns: New file above Lock, Open with recents, Convert.
+**Why:** Walker wanted something cleaner and more minimal, organized like the file system, and no mono. Over three Looks Good rounds (custom-aesthetics/opentext-clean, renders r1–r3) he picked Bento Grid over Japanese Minimal and Live Tile. He asked for a different font than Manrope/Inter, and chose Geist over Onest and Instrument Sans.
+**Source of truth:** the approved round-3 renders and design/looks-good-build-pack.md. Plus Jakarta Sans and Inter are removed from the bundle.

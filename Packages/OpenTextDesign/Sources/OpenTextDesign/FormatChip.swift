@@ -25,9 +25,9 @@ public struct FormatChip: View {
             }
             .font(Brand.Fonts.body(12, weight: .semibold)).tracking(-0.12)
             .foregroundStyle(Brand.Palette.ink)
-            .padding(.leading, 9).padding(.trailing, 6)
-            .frame(height: 24)
-            .raisedSurface(radius: Brand.Radius.chip, depth: .control)
+            .padding(.leading, 10).padding(.trailing, 8)
+            .frame(height: 26)
+            .background(RoundedRectangle(cornerRadius: Brand.Radius.chip, style: .continuous).fill(Brand.Palette.well))
         }
         .menuStyle(.button)
         .buttonStyle(.plain)

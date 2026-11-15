@@ -25,7 +25,7 @@ final class FinderSync: FIFinderSync {
             let targets = DocFormat(url: first).map { FileRouting.finderFilter(engine.targets(from: $0).map(\.fileExtension)) } ?? []
             if !targets.isEmpty {
                 let convert = NSMenuItem(title: "Convert to", action: nil, keyEquivalent: "")
-                convert.image = BrandMark.templateImage(pointSize: 16)
+                convert.image = BrandMark.image(pointSize: 16)
                 let sub = NSMenu(title: "Convert to")
                 for t in targets {
                     let i = item(t, #selector(convertTo(_:)))
@@ -50,7 +50,7 @@ final class FinderSync: FIFinderSync {
     private func item(_ title: String, _ action: Selector, icon: Bool = false) -> NSMenuItem {
         let i = NSMenuItem(title: title, action: action, keyEquivalent: "")
         i.target = self
-        if icon { i.image = BrandMark.templateImage(pointSize: 16) }
+        if icon { i.image = BrandMark.image(pointSize: 16) }
         return i
     }
 

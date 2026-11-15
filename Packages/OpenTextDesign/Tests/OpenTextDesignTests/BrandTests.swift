@@ -64,4 +64,24 @@ import Testing
         #expect(image.size.height == 16)
         #expect(abs(image.size.width - 16 * 510.56 / 690.56) < 0.01)
     }
+
+    @Test func colourImageIsTheApricotTile() throws {
+        let image = BrandMark.image(pointSize: 64)
+        #expect(!image.isTemplate)
+        // Draw into an explicit sRGB bitmap: tiffRepresentation tags pixels with the screen's space.
+        let side = 128
+        let rep = try #require(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8,
+                                                samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                                bytesPerRow: 0, bitsPerPixel: 0)?.retagging(with: .sRGB))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        image.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+        let scale = CGFloat(side) / 64
+        func px(_ x: CGFloat, _ y: CGFloat) -> NSColor? { rep.colorAt(x: Int(x * scale), y: Int(y * scale)) }
+        let ground = try #require(px(6, 32)), page = try #require(px(40, 30)), corner = try #require(px(0.5, 0.5))
+        #expect(abs(ground.redComponent - 1) < 0.03 && abs(ground.greenComponent - 0.780) < 0.03 && abs(ground.blueComponent - 0.608) < 0.03, "ground \(ground)")
+        #expect(page.redComponent > 0.97 && page.greenComponent > 0.97 && page.blueComponent > 0.97)
+        #expect(corner.alphaComponent < 0.1, "rounded tile corners are transparent")
+    }
 }

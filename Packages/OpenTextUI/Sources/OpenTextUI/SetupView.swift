@@ -56,7 +56,7 @@ public struct SetupView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: Brand.Spacing.xl) {
             HStack(alignment: .center, spacing: Brand.Spacing.lg) {
-                BrandMark(size: 36)
+                BrandMark(size: 52)
                 VStack(alignment: .leading, spacing: 6) {
                     WelcomeTitle()
                     Text("Three quick things to set up OpenText. You can change them later.").brandSecondary(14)

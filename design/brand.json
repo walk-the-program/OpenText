@@ -4,6 +4,9 @@
     "app-subtitle": "Open, edit, convert or lock any document",
     "contact-email": "none",
     "site-url": "none",
+    "mark-ground": "#ffc79b",
+    "mark-page": "#ffffff",
+    "mark-ink": "#1e1f21",
     "mark-fold": "#e2e58a"
   },
   "fonts": {

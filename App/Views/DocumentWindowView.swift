@@ -67,7 +67,7 @@ struct DocumentWindowView: View {
                 Color.clear
             case .failed(let message):
                 VStack(spacing: 16) {
-                    BrandMark(size: 56)
+                    BrandMark(size: 64)
                     Text(message).brandBody().foregroundStyle(Brand.Palette.muted)
                         .multilineTextAlignment(.center).frame(maxWidth: 360)
                 }

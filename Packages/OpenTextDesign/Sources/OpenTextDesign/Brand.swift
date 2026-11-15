@@ -53,9 +53,13 @@ public enum Brand {
         public static let abMHue = primary
     }
 
-    /// Logo-only colour. The citron fold is the same in light and dark and is never a UI fill.
+    /// Logo-only colours (the apricot app icon). The same in light and dark and never UI fills.
     public enum Mark {
+        public static let groundNS = NSColor(brandHex: "#ffc79b")
+        public static let pageNS = NSColor(brandHex: "#ffffff")
+        public static let inkNS = NSColor(brandHex: "#1e1f21")
         public static let foldNS = NSColor(brandHex: "#e2e58a")
+        public static let ground = Color(nsColor: groundNS)
         public static let fold = Color(nsColor: foldNS)
     }
 

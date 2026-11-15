@@ -10,7 +10,7 @@ extension SelfTestRunner {
     static let clickScenarios: Set<String> = [
         "home-open-panel", "home-controls", "home-finish-setup", "setup-buttons", "home-create-closes", "doc-save",
         "doc-rename", "doc-resize", "lock-cancel", "convert-cancel", "convert-run", "quick-create", "doc-toolbar",
-        "doc-close-prompt", "pdf-sign-move", "pdf-text-box", "home-recent-closes", "home-convert", "home-lock-check",
+        "doc-close-prompt", "pdf-sign-move", "pdf-text-box", "home-recent-closes", "home-convert", "home-lock-check", "about-icon",
     ]
 
     func runClickScenario(_ name: String) async {
@@ -34,6 +34,7 @@ extension SelfTestRunner {
         case "home-recent-closes": await homeRecentCloses()
         case "home-convert": await homeConvert()
         case "home-lock-check": await homeLockCheck()
+        case "about-icon": await aboutIcon()
         default: failures.append("unknown click scenario \(name)")
         }
     }
@@ -92,6 +93,11 @@ extension SelfTestRunner {
             let files = (try? FileManager.default.contentsOfDirectory(atPath: SelfTest.dir ?? "")) ?? []
             failures.append("after Create: files \(files), windows \(NSApp.windows.map { "\($0.identifier?.rawValue ?? "")|\($0.title)|vis=\($0.isVisible)" })")
         }
+        let stem = (expectFile as NSString).deletingPathExtension, ext = (expectFile as NSString).pathExtension
+        let duplicate = "\(stem) 2.\(ext)"
+        try? await Task.sleep(for: .milliseconds(300))
+        expect(!FileManager.default.fileExists(atPath: (SelfTest.dir.map { ($0 as NSString).appendingPathComponent(duplicate) } ?? "")),
+               "one Create made two files (\(expectFile) and \(duplicate))")
         return doc(named: expectFile)
     }
 
@@ -552,6 +558,43 @@ extension SelfTestRunner {
         }
         expect(FileManager.default.fileExists(atPath: url.path), "converting must keep the original")
         expect(!windows(.home).isEmpty, "Home should stay open after converting")
+    }
+
+    /// App menu > About OpenText: the standard About panel opens and its icon is the apricot tile.
+    private func aboutIcon() async {
+        guard let appMenu = NSApp.mainMenu?.items.first?.submenu,
+              let index = appMenu.items.firstIndex(where: { $0.title.hasPrefix("About") }) else {
+            failures.append("no About item in the app menu"); return
+        }
+        let before = Set(NSApp.windows.map(ObjectIdentifier.init))
+        appMenu.performActionForItem(at: index)
+        var panel: NSWindow?
+        _ = await waitFor("About panel") {
+            panel = NSApp.windows.first { !before.contains(ObjectIdentifier($0)) && $0.isVisible }
+            return panel != nil
+        }
+        guard let panel, let icon = Self.imageViews(in: panel.contentView).compactMap(\.image).max(by: { $0.size.width < $1.size.width }) else {
+            failures.append("About panel shows no icon"); return
+        }
+        // Sample the tile's ground left of the page, in sRGB (the icon body spans 10%–90% of the image).
+        let side = 256
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: side, pixelsHigh: side, bitsPerSample: 8, samplesPerPixel: 4,
+                                         hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)?
+            .retagging(with: .sRGB) else { failures.append("bitmap"); return }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        icon.draw(in: NSRect(x: 0, y: 0, width: side, height: side))
+        NSGraphicsContext.restoreGraphicsState()
+        let c = rep.colorAt(x: Int(Double(side) * 0.17), y: side / 2) ?? .clear
+        let apricot = abs(c.redComponent - 1) < 0.06 && abs(c.greenComponent - 0.780) < 0.06 && abs(c.blueComponent - 0.608) < 0.06
+        expect(apricot, "About icon ground should be apricot #ffc79b, got \(c)")
+        panel.close()
+    }
+
+    static func imageViews(in view: NSView?) -> [NSImageView] {
+        guard let view else { return [] }
+        let own: [NSImageView] = (view as? NSImageView).map { [$0] } ?? []
+        return own + view.subviews.flatMap { imageViews(in: $0) }
     }
 
     /// Lock card: pick a file, type two different passwords, Lock: an inline error, nothing locked or moved.

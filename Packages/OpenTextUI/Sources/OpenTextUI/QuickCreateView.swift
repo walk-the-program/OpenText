@@ -32,6 +32,7 @@ public struct QuickCreateView: View {
     let onCancel: () -> Void
     let embedded: Bool
     @FocusState private var nameFocused: Bool
+    @State private var lastCreate = Date.distantPast
 
     public init(state: Binding<QuickCreateState>, onCreate: @escaping () -> Void = {},
                 onChangeFolder: @escaping () -> Void = {}, onCancel: @escaping () -> Void = {},
@@ -57,7 +58,7 @@ public struct QuickCreateView: View {
                 TextField("Untitled", text: $state.name)
                     .focused($nameFocused)
                     .brandField(focused: nameFocused)
-                    .onSubmit(onCreate)
+                    .onSubmit(create)
             }
             gap(Brand.Spacing.lg)
             VStack(alignment: .leading, spacing: 6) {
@@ -100,7 +101,15 @@ public struct QuickCreateView: View {
     }
 
     private var createButton: some View {
-        Button("Create", action: onCreate).buttonStyle(.primaryAction).keyboardShortcut(.defaultAction)
+        Button("Create", action: create).buttonStyle(.primaryAction).keyboardShortcut(.defaultAction)
+    }
+
+    /// Return in the name field and the Create button can both fire for one press (the field submits as it
+    /// loses focus to the click), which made "Untitled 2" next to "Untitled". One create per second.
+    private func create() {
+        guard Date().timeIntervalSince(lastCreate) > 1 else { return }
+        lastCreate = Date()
+        onCreate()
     }
 }
 

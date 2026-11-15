@@ -84,7 +84,7 @@ public struct HomeView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: Brand.Spacing.md) {
-                BrandMark(size: 34)
+                BrandMark(size: 40)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("OpenText").brandHeading(Brand.Fonts.Scale.largeTitle)
                     Text("Open, edit, convert or lock any document.").brandSecondary(13.5)
@@ -143,8 +143,12 @@ public struct HomeView: View {
             }
             Text("Recent").brandLabel().padding(.top, 10).padding(.leading, 2)
             if recents.isEmpty {
-                Text("Files you open show up here.").font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted)
-                    .padding(.leading, 2)
+                VStack(spacing: 12) {
+                    BrandMark(size: 48)
+                    Text("Files you open show up here.").font(Brand.Fonts.body(13)).foregroundStyle(Brand.Palette.muted)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .brandEnter(delay: 0.1)
             } else {
                 VStack(spacing: 0) {
                     ForEach(Array(recents.prefix(9).enumerated()), id: \.offset) { i, url in

@@ -167,3 +167,10 @@ Newest at the bottom. Never delete an entry; mark it superseded instead.
 - Home is three columns: New file above Lock, Open with recents, Convert.
 **Why:** Walker wanted something cleaner and more minimal, organized like the file system, and no mono. Over three Looks Good rounds (custom-aesthetics/opentext-clean, renders r1–r3) he picked Bento Grid over Japanese Minimal and Live Tile. He asked for a different font than Manrope/Inter, and chose Geist over Onest and Instrument Sans.
 **Source of truth:** the approved round-3 renders and design/looks-good-build-pack.md. Plus Jakarta Sans and Inter are removed from the bundle.
+
+## D-024 — The apricot app icon is the logo everywhere (supersedes D-021's colours)
+- Date: 2026-11-14
+- Status: Decided
+- Decision: The app icon is the apricot colorway: a white page with a citron #e2e58a fold and #1e1f21 ink on an #ffc79b ground, the same in light and dark. Source: ~/Desktop/Projects/Nominal Studios/Brand Assets/OpenText icon/ (the old off-white files are kept in its archive-cream/ folder). `BrandMark` draws that full tile and is used on Home, in onboarding, in the "couldn't open" state and in the empty Recent list. Finder's right-click items use the full-colour tile (`BrandMark.image`). The About panel shows it through AppIcon. The menu bar keeps a monochrome template of the page glyph (`BrandMark.templateImage`). Tile colours live in `Brand.Mark` and `identity.mark-*` in brand.json and are never UI fills.
+- Why: Walker: "use that mark anywhere the app shows its logo (About, onboarding, the Finder extension, empty states, and a monochrome template version for the menu bar)."
+- Alternatives considered: keeping the bare page glyph in-app (rejected: it no longer matches the icon); a template image in Finder's menus (rejected: Walker listed the Finder extension with the colour uses and kept monochrome for the menu bar only).

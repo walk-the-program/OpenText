@@ -2,7 +2,7 @@
 
 One Mac app to open, edit, convert or lock any everyday document, without picking an app first.
 
-![OpenText](design/marketing/linkedin-carousel/opentext-carousel-01.png)
+![OpenText](design/marketing/linkedin-carousel/opentext-carousel-02.png)
 
 OpenText replaces the shuffle between TextEdit, Preview, Adobe Reader and online converters. Open a text file, PDF, photo or Word document, read it or make a quick edit, change its format, and save.
 
